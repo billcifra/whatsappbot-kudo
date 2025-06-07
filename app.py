@@ -24,7 +24,7 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Cliente de OpenAI
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ---------------------------------------------
 # Definición de intenciones y respuestas directas
