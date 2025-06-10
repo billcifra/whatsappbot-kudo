@@ -69,9 +69,8 @@ hablar_con_humano = ["hablar con alguien",
                      "atención humana"
                      ]
 
-# Usuarios pausados temporalmente (por solicitud de humano)
-admins = ["59179598641", "59162421412"]  # Números autorizados para comandos administrativos
-pausados = {}
+# Lista de números a notificar en caso de solicitud de atención humana
+notificar_humanos = ["59179598641", "59176785574"]
 
 
 # ---------------------------------------------
@@ -148,46 +147,13 @@ def webhook():
             if any(frase in msg_lower for frase in hablar_con_humano):
                 with open("solicitudes_humano.csv", mode="a", newline="", encoding="utf-8") as file:
                     csv.writer(file).writerow([user_phone, user_msg])
-                pausados[user_phone] = ahora
                 send_message(
-                    "¡Claro! Alguien del equipo de KUDO Bolivia se pondrá en contacto contigo en este mismo chat."
-                    " En unos instantes dejaré de responder para que puedan atenderte directamente.",
+                    "¡Claro! Alguien del equipo de KUDO Bolivia se pondrá en contacto contigo.",
                     user_phone)
+                for admin_phone in notificar_humanos:
+                    send_message(f"📩 Solicitud de atención humana del número: {user_phone}\nMensaje: {user_msg}",
+                                 admin_phone)
                 return "ok", 200
-
-            # Verificar si el usuario está en pausa
-            if user_phone in pausados and ahora - pausados[user_phone] < 3600:
-                print(f"[INFO] Usuario pausado: {user_phone}, no se envía respuesta.")
-                return "ok", 200
-
-            # Comando para reactivar usuario manualmente
-            if msg_lower.startswith("/pausar"):
-                if user_phone not in admins:
-                    send_message("No estás autorizado para ejecutar este comando.", user_phone)
-                    return "ok", 200
-                partes = msg_lower.split()
-                if len(partes) == 2:
-                    numero = partes[1].strip()
-                    pausados[numero] = ahora
-                    send_message(f"El número {numero} ha sido pausado por 1 hora.", user_phone)
-                    print(f"[INFO] Usuario pausado manualmente: {numero}")
-                    return "ok", 200
-            if msg_lower.startswith("/activar"):
-                if user_phone not in admins:
-                    send_message("No estás autorizado para ejecutar este comando.", user_phone)
-                    return "ok", 200
-                partes = msg_lower.split()
-                if len(partes) == 2:
-                    numero = partes[1].strip()
-                    if numero in pausados:
-                        del pausados[numero]
-                        send_message(
-                            f"El número {numero} ha sido reactivado. El bot volverá a responderle con normalidad.",
-                            user_phone)
-                        print(f"[INFO] Usuario reactivado manualmente: {numero}")
-                    else:
-                        send_message(f"El número {numero} no estaba pausado o no se encontró.", user_phone)
-                    return "ok", 200
 
             # Revisar si el mensaje es un número de opción directa
             if user_msg.strip() in respuestas_directas:
@@ -226,6 +192,11 @@ def webhook():
                 "• *Transitoriedad* (nada es permanente),"
                 "• *Interdependencia* (todo se conecta), y"
                 "• *Mente abierta* (imparcialidad, humildad y crecimiento constante)."
+                "📌 Sobre KUDO Bolivia:"
+                "KUDO Bolivia fue constituida oficialmente en abril de 2021. El *Branch Chief* de KUDO en Bolivia es el"
+                " Sensei *José Manuel Rioja Claure*, 2º DAN en Kudo. Desde su creación, Bolivia ha tenido presencia "
+                "internacional, participando oficialmente en el Panamericano de Brasil y en el Mundial "
+                "de Japón en 2023."
                 "📹 Videos recomendados:"
                 "• ¿Qué es Kudo?: https://www.youtube.com/watch?v=NqcE1J7z2eE&"
                 "• Highlights: https://www.youtube.com/watch?v=JtTWeISoAFA&"
