@@ -4,10 +4,13 @@
 from flask import Flask, request
 import requests
 import os
-import csv
 import time
 from dotenv import load_dotenv
 from openai import OpenAI
+import gspread
+from google.oauth2.service_account import Credentials
+import json
+from google.auth.transport.requests import Request
 
 # Cargar variables de entorno desde archivo .env
 load_dotenv()
@@ -22,9 +25,18 @@ contexto_usuarios = {}
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GOOGLE_SHEET_KEY = os.getenv("GOOGLE_SHEET_KEY")
+credentials_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS_JSON"))
 
 # Cliente de OpenAI
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+# Cliente de Google Sheets
+scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(credentials_dict, scopes=scope)
+gs_client = gspread.authorize(creds)
+solicitudes_sheet = gs_client.open_by_key(GOOGLE_SHEET_KEY).worksheet("SolicitudesHumano")
+interesados_sheet = gs_client.open_by_key(GOOGLE_SHEET_KEY).worksheet("Interesados")
 
 # ---------------------------------------------
 # Definición de intenciones y respuestas directas
@@ -38,9 +50,9 @@ intenciones = {"1": ["horarios", "hora", "a qué hora", "qué días", "qué hora
                }
 
 respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• *Kudo Niños (7 a 13 años):"
-                            "*\n\t*Martes y Jueves* 8:45–10:00 y \n\t16:30–18:00 | \n\t*Sábados* 11:15–12:30\n• "
+                            "*\n\t*Martes y Jueves* 8:45–10:00 y \n\t16:30–18:00 | \n\t*Sábados* 11:15–12:45\n• "
                             "*Kudo Jovenes y Adultos:*\n\t*Martes y Jueves* 8:45–10:00 y \n\t19:30–21:00 | "
-                            "\n\t*Sábado 10:15–11:15*\n• *Brazilian Jiu Jitsu:*\n\t *Lunes, Miércoles y Viernes* "
+                            "\n\t*Sábado 10:00–11:15*\n• *Brazilian Jiu Jitsu:*\n\t *Lunes, Miércoles y Viernes* "
                             "\n\t17:00–18:30 y 19:30–21:00",
                        "2": "👉 *Precios:*\nBs. 250 por persona. Consulta por descuentos directamente con el "
                             "equipo del dojo.",
@@ -93,14 +105,18 @@ def send_message(text, phone):
 
 
 def registrar_interesado(phone, message):
-    """Registra un interesado en un archivo CSV"""
-    with open("interesados.csv", mode="a", newline="", encoding="utf-8") as file:
-        csv.writer(file).writerow([phone, message])
+    fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    interesados_sheet.append_row([phone, message, fecha])
 
+
+def registrar_solicitud_humana(phone, message):
+    fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    solicitudes_sheet.append_row([phone, message, fecha])
 
 # ---------------------------------------------
 # Webhooks
 # ---------------------------------------------
+
 
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -145,11 +161,9 @@ def webhook():
 
             # Detectar solicitud de atención humana
             if any(frase in msg_lower for frase in hablar_con_humano):
-                with open("solicitudes_humano.csv", mode="a", newline="", encoding="utf-8") as file:
-                    csv.writer(file).writerow([user_phone, user_msg])
-                send_message(
-                    "¡Claro! Alguien del equipo de KUDO Bolivia se pondrá en contacto contigo.",
-                    user_phone)
+                registrar_solicitud_humana(user_phone, user_msg)
+                send_message("¡Claro! Alguien del equipo de KUDO Bolivia se pondrá en contacto contigo."
+                             , user_phone)
                 for admin_phone in notificar_humanos:
                     send_message(f"📩 Solicitud de atención humana del número: {user_phone}\nMensaje: {user_msg}",
                                  admin_phone)
@@ -232,6 +246,7 @@ def webhook():
                                                )
             texto = response.output_text
             contexto_usuarios[user_phone] = {"tema": "libre", "timestamp": ahora}
+            registrar_interesado(user_phone, user_msg)
             send_message(texto, user_phone)
 
     except Exception as e:
