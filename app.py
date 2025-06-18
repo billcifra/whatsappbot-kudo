@@ -113,6 +113,7 @@ def registrar_solicitud_humana(phone, message):
     fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     solicitudes_sheet.append_row([phone, message, fecha])
 
+
 # ---------------------------------------------
 # Webhooks
 # ---------------------------------------------
@@ -253,6 +254,16 @@ def webhook():
         print("Error:", e)
 
     return "ok", 200
+
+
+@app.route("/testsheet")
+def test_sheet():
+    try:
+        interesados_sheet.append_row(["TEST", "Prueba manual", time.strftime("%Y-%m-%d %H:%M:%S")])
+        return "Escritura exitosa", 200
+    except Exception as e:
+        print("[ERROR]", e)
+        return str(e), 500
 
 
 # ---------------------------------------------
