@@ -49,7 +49,7 @@ intenciones = {"1": ["horarios", "hora", "a qué hora", "qué días", "qué hora
                "5": ["dónde están", "dirección", "ubicación", "dónde queda", "cómo llegar"]
                }
 
-respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• *Kudo Niños (7 a 13 años):"
+respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• *Kudo Niños (6 a 13 años):"
                             "*\n\t*Martes y Jueves* 8:45–10:00 y \n\t16:30–18:00 | \n\t*Sábados* 11:15–12:45\n• "
                             "*Kudo Jovenes y Adultos:*\n\t*Martes y Jueves* 8:45–10:00 y \n\t19:30–21:00 | "
                             "\n\t*Sábado 10:00–11:15*\n• *Brazilian Jiu Jitsu:*\n\t *Lunes, Miércoles y Viernes* "
@@ -239,7 +239,7 @@ def webhook():
                       "Ofrecemos clases para todas las edades, desde niños hasta adultos. Se aceptan niños desde los"
                       " 6 años o próximos a cumplirlos. No se necesita experiencia previa.\n\n"
                       "🕒 *Horarios generales de referencia:*\n"
-                      "• Kudo Niños (7 a 13 años): martes y jueves 8:45–10:00 y 16:30–18:00 | sábados 11:15–12:45\n"
+                      "• Kudo Niños (6 a 13 años): martes y jueves 8:45–10:00 y 16:30–18:00 | sábados 11:15–12:45\n"
                       "• Kudo Jóvenes y Adultos: martes y jueves 8:45–10:00 y 19:30–21:00 | sábados 10:00–11:15\n"
                       "• Brazilian Jiu-Jitsu: lunes, miércoles y viernes 17:00–18:30 y 19:30–21:00\n\n"
                       "💰 *Precios:* Bs. 250 mensual por persona. También ofrecemos una opción de Bs. 150 por dos "
