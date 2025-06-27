@@ -76,8 +76,6 @@ hablar_con_humano = ["hablar con alguien",
                      "necesito ayuda",
                      "quiero hablar con una persona",
                      "me ayudan", "me pueden ayudar",
-                     "humano",
-                     "persona",
                      "atención humana"
                      ]
 
