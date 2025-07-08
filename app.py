@@ -268,6 +268,8 @@ def webhook():
                       "obtener más información. Si el usuario escribe una lista de números como “1, 3, 4”, responde "
                       "a cada opción en orden. Cada número corresponde al menú que se muestra. No inventes ni combines"
                       " si no está especificado.\n"
+                      "🔁 Cuando el usuario solicite la opción 3 (*Disciplinas*), sola o combinada con otras, debes "
+                      "incluir también los enlaces de video explicativo de *Kudo* y *BJJ* en tu respuesta."
                       )
             if not es_nuevo:
                 prompt += " No inicies con saludos."
