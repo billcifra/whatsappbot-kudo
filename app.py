@@ -239,7 +239,7 @@ def webhook():
                       "🕒 *Horarios generales de referencia:*\n"
                       "• Kudo Niños (6 a 13 años): martes y jueves 8:45–10:00 y 16:30–18:00 | sábados 11:15–12:45\n"
                       "• Kudo Jóvenes y Adultos: martes y jueves 8:45–10:00 y 19:30–21:00 | sábados 10:00–11:15\n"
-                      "• Brazilian Jiu-Jitsu: lunes, miércoles y viernes 17:00–18:30 y 19:30–21:00\n\n"
+                      "• Brazilian Jiu-Jitsu (todas las edades): lunes, miércoles y viernes 17:00–18:30 y 19:30–21:00\n\n"
                       "💰 *Precios:* Bs. 250 mensual por persona. También ofrecemos una opción de Bs. 150 por dos "
                       "semanas de vacaciones de invierno. Consulta por descuentos directamente con el equipo "
                       "del dojo.\n\n"
