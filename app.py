@@ -62,9 +62,9 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• *Ku
                        "4": "👉 *¿Cómo inscribirte?*\nAcercate al dojo para poder inscribirte. "
                             "¡Estamos disponibles para recibirte!\n\n🥋¡Tienes una clase de prueba gratis en "
                             "todas nuestras disciplinas!",
-                       "5": "📍 *Ubicación de KUDO Bolivia:*\nEdificio ex-Hotel Plaza, Av. 16 de Julio - Prado, "
-                            "La Paz, Bolivia,\ningreso gradas del colegio Don bosco\n\n"
-                            "📌Mapa: https://maps.app.goo.gl/CoJ7eoVns5tckgPv7"
+                       "5": "📍 *Ubicación de KUDO Bolivia:*\nCañada Strongest N.º 1847 - a pasos de la plaza del "
+                            "estudiante, La Paz, Bolivia\n\n"
+                            "📌Mapa: https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc"
                        }
 
 # Menú adicional que se agrega al final de cada mensaje
@@ -251,10 +251,10 @@ def webhook():
                       "la disciplina.\n\n"
                       "📝 *Inscripción:* Puedes inscribirte acercándote al dojo. ¡Estamos disponibles para "
                       "recibirte!\n\n"
-                      "📍 *Ubicación:* Edificio ex-Hotel Plaza, Av. 16 de Julio - Prado, La Paz, Bolivia. Ingreso "
-                      "por las gradas del colegio Don Bosco. \n\n "
+                      "📍 *Ubicación:* EnCañada Strongest N.º 1847 - a pasos de la plaza del estudiante, La Paz, "
+                      "Bolivia. \n\n "
                       "📌 Puedes ver el mapa en Google Maps:  \n"
-                      "https://maps.app.goo.gl/CoJ7eoVns5tckgPv7\n\n"
+                      "https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc\n\n"
                       "📝 Si alguien pregunta por temas como horarios, precios, inscripción o ubicación, ofrece "
                       "primero este menú de opciones:\n"
                       "1️⃣ Horarios\n"
