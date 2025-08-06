@@ -134,7 +134,7 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
 
 # Menú adicional que se agrega al final de cada mensaje
 menu = ("\n\n📋 ¿Sobre qué más te gustaría saber?\n"
-        "1️⃣ Horarios\n2️⃣ Precios\n3️⃣ Disciplinas\n4️⃣ Inscripción\n5️⃣ Ubicación")
+        "1️⃣ Horarios\n2️⃣ Precios\n3️⃣ Disciplinas\n4️⃣ Inscripción\n5️⃣ Ubicación\n6️⃣ ¿Qué es Kudo?")
 
 # Palabras clave para atención humana
 hablar_con_humano = ["hablar con alguien",
