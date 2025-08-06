@@ -115,7 +115,7 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
                             "🥋 Brazilian Jiu-Jitsu\n\t"
                             "Que es BJJ: https://www.youtube.com/watch?v=tztK3dJksk0\n\n"
                             "*\n🥋 Kick Boxing\n\t"
-                            "Que es BJJ: https://www.youtube.com/watch?v=Sh9cVUidnr0&pp=ygULa2ljayBib3hpbmc%3D",
+                            "Que es Kick Boxing: https://www.youtube.com/watch?v=Sh9cVUidnr0&pp=ygULa2ljayBib3hpbmc%3D",
                        "4": "👉 *¿Cómo inscribirte?*\nAcercate al dojo para poder inscribirte. "
                             "¡Estamos disponibles para recibirte!\n\n🥋¡Tienes una clase de prueba gratis en "
                             "todas nuestras disciplinas!",
@@ -123,7 +123,13 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
                             "La Paz, Bolivia.\n\n"
                             "🚨 *¡Importante!*: Desde julio de 2025, nos mudamos a esta nueva dirección. "
                             "Ya no atendemos en el ex-Hotel Plaza.\n\n"
-                            "📌Mapa: https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc"
+                            "📌Mapa: https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc",
+                       "6": "¿Qué es Kudo"
+                            "Kudo es un arte marcial japonés moderno que combina golpes, lanzamientos y control "
+                            "en el suelo."
+                            "🎥 Mira este video: https://www.youtube.com/watch?v=NqcE1J7z2eE&"
+                            "🎥 Highlights: https://www.youtube.com/watch?v=JtTWeISoAFA&"
+                            "🎥 Mundial 2023: https://www.youtube.com/watch?v=jfcne0M5qEU"
                        }
 
 # Menú adicional que se agrega al final de cada mensaje
@@ -375,6 +381,7 @@ def webhook():
                       "3️⃣ Disciplinas\n"
                       "4️⃣ Inscripción\n"
                       "5️⃣ Ubicación\n"
+                      "6️⃣ ¿Qué es Kudo"
                       "\n"
                       "📌 Siempre responde en español neutro, con cortesía y como si formaras parte del equipo de "
                       "*KUDO Bolivia*. Si no conoces la respuesta exacta, invita amablemente a visitar el dojo para "
