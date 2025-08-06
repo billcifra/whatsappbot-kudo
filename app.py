@@ -126,9 +126,9 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
                             "📌Mapa: https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc",
                        "6": "¿Qué es Kudo"
                             "Kudo es un arte marcial japonés moderno que combina golpes, lanzamientos y control "
-                            "en el suelo."
-                            "🎥 Mira este video: https://www.youtube.com/watch?v=NqcE1J7z2eE&"
-                            "🎥 Highlights: https://www.youtube.com/watch?v=JtTWeISoAFA&"
+                            "en el suelo.\n\n"
+                            "🎥 Mira este video: https://www.youtube.com/watch?v=NqcE1J7z2eE&\n\n"
+                            "🎥 Highlights: https://www.youtube.com/watch?v=JtTWeISoAFA&\n\n"
                             "🎥 Mundial 2023: https://www.youtube.com/watch?v=jfcne0M5qEU"
                        }
 
