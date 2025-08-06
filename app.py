@@ -42,11 +42,11 @@ interesados_sheet = gs_client.open_by_key(GOOGLE_SHEET_KEY).worksheet("Interesad
 # Definición de intenciones y respuestas directas
 # ---------------------------------------------
 
-intenciones = {"1": ["horarios", "hora", "a qué hora", "qué días", "qué horario"],
-               "2": ["precio", "cuánto cuesta", "cuánto cobran", "tarifa", "vale", "costo"],
-               "3": ["qué enseñan", "disciplinas", "qué clases hay", "qué actividades"],
-               "4": ["inscribir", "inscripción", "cómo me apunto", "cómo me inscribo", "registrarme"],
-               "5": ["dónde están", "dirección", "ubicación", "dónde queda", "cómo llegar"]
+intenciones = {"1": ["horarios"]#, "hora", "a qué hora", "qué días", "qué horario"],
+               "2": ["precio"]#, "cuánto cuesta", "cuánto cobran", "tarifa", "vale", "costo"],
+               "3": ["disciplinas"]#, "qué enseñan", "qué clases hay", "qué actividades"],
+               "4": ["inscripción"]#, "inscribir", "cómo me apunto", "cómo me inscribo", "registrarme"],
+               "5": [ "ubicación"]#, "dónde están", "dirección", "dónde queda", "cómo llegar"]
                }
 
 respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
@@ -113,7 +113,7 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
                             "*\n🥋 Kudo\n\t"
                             "Que es KUDO: https://www.youtube.com/watch?v=NqcE1J7z2eE\n\n"
                             "🥋 Brazilian Jiu-Jitsu\n\t"
-                            "Que es BJJ: https://www.youtube.com/watch?v=tztK3dJksk0"
+                            "Que es BJJ: https://www.youtube.com/watch?v=tztK3dJksk0\n\n"
                             "*\n🥋 Kick Boxing\n\t"
                             "Que es BJJ: https://www.youtube.com/watch?v=Sh9cVUidnr0&pp=ygULa2ljayBib3hpbmc%3D",
                        "4": "👉 *¿Cómo inscribirte?*\nAcercate al dojo para poder inscribirte. "
