@@ -121,8 +121,6 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
                             "todas nuestras disciplinas!",
                        "5": "📍 *Ubicación:* Calle Cañada Strongest N.º 1847 - a pasos de la plaza del estudiante, "
                             "La Paz, Bolivia.\n\n"
-                            "🚨 *¡Importante!*: Desde julio de 2025, nos mudamos a esta nueva dirección. "
-                            "Ya no atendemos en el ex-Hotel Plaza.\n\n"
                             "📌Mapa: https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc",
                        "6": "¿Qué es Kudo?\n\n"
                             "Kudo es un arte marcial japonés moderno y completo que combina golpes a contacto pleno, "
@@ -265,8 +263,8 @@ def webhook():
             # Si es nuevo, se registra ahora
             if es_nuevo:
                 contexto_usuarios[user_phone] = {"tema": None, "timestamp": ahora}
-            prompt = ("Eres un asistente virtual del centro de artes marciales *KUDO Bolivia*, recientemente ubicado "
-                      "en la calle Cañada Strongest N.º 1847, cerca de la plaza del estudiante, en La Paz, Bolivia."
+            prompt = ("Eres un asistente virtual del centro de artes marciales *KUDO Bolivia*, ubicado "
+                      "en la calle Cañada Strongest N.º 1847, a media cuadra de la plaza del estudiante, en La Paz, Bolivia."
                       "Tu objetivo es brindar información clara, respetuosa y profesional a todas las personas que "
                       "consultan por WhatsApp.\n"
                       "\n"
@@ -382,8 +380,6 @@ def webhook():
                       "recibirte!\n\n"
                       "📍📍 *Ubicación:* Calle Cañada Strongest N.º 1847 - a pasos de la plaza del estudiante, La Paz, "
                       "Bolivia.\n\n"
-                      "🚨 *¡Importante!*: Desde julio de 2025, nos mudamos a esta nueva dirección. Ya no atendemos en "
-                      "el ex-Hotel Plaza."
                       "📌 Puedes ver el mapa en Google Maps:  \n"
                       "https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc\n\n"
                       "📝 Si alguien pregunta por temas como horarios, precios, inscripción o ubicación, ofrece "
