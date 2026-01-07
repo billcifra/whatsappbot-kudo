@@ -4,3 +4,4 @@ openai
 python-dotenv
 google
 gspread
+openai-agents

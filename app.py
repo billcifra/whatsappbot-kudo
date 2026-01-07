@@ -10,7 +10,8 @@ from openai import OpenAI
 import gspread
 from google.oauth2.service_account import Credentials
 import json
-from google.auth.transport.requests import Request
+# ✅ Agents SDK
+from agents import Agent, Runner
 
 # Cargar variables de entorno desde archivo .env
 load_dotenv()
@@ -29,7 +30,7 @@ GOOGLE_SHEET_KEY = os.getenv("GOOGLE_SHEET_KEY")
 credentials_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS_JSON"))
 
 # Cliente de OpenAI
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # Cliente de Google Sheets
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -435,11 +436,16 @@ def webhook():
             if not es_nuevo:
                 prompt += " No inicies con saludos."
 
-            response = client.responses.create(model="gpt-4.1",
-                                               instructions=prompt,
-                                               input=user_msg,
-                                               )
-            texto = response.output_text
+            # ✅ Reemplazo didáctico: Agents SDK (Agent + Runner)
+            agent = Agent(
+                name="KUDO Bolivia Assistant",
+                model="gpt-4.1",
+                instructions=prompt
+            )
+            result = Runner.run_sync(agent, user_msg)
+
+            texto = getattr(result, "final_output", None) or getattr(result, "output", None) or str(result)
+
             contexto_usuarios[user_phone] = {"tema": "libre", "timestamp": ahora}
             registrar_interesado(user_phone, user_msg)
             send_message(texto, user_phone)
