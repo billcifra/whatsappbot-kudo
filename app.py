@@ -217,6 +217,16 @@ def solicitar_asistencia_humana(user_phone: str, user_message: str) -> str:
 # ---------------------------------------------
 # Webhooks
 # ---------------------------------------------
+DEBUG_TOKEN = os.getenv("DEBUG_TOKEN", "")
+
+@app.route("/debug/contexto", methods=["GET"])
+def debug_contexto():
+    token = request.args.get("token", "")
+    if not DEBUG_TOKEN or token != DEBUG_TOKEN:
+        return {"error": "unauthorized"}, 401
+
+    # OJO: puede ser grande; aquí lo devuelvo completo
+    return {"contexto_usuarios": contexto_usuarios}, 200
 
 
 @app.route("/webhook", methods=["GET"])
