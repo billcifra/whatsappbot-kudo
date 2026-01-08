@@ -11,7 +11,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 # ✅ Agents SDK
-from agents import Agent, Runner
+from agents import Agent, Runner, function_tool
 
 # Cargar variables de entorno desde archivo .env
 load_dotenv()
@@ -152,12 +152,12 @@ menu = ("\n\n📋 ¿Sobre qué más te gustaría saber?\n"
         "1️⃣ Horarios\n2️⃣ Precios\n3️⃣ Disciplinas\n4️⃣ Inscripción\n5️⃣ Ubicación\n6️⃣ ¿Qué es Kudo?")
 
 # Palabras clave para atención humana
-hablar_con_humano = ["hablar con alguien",
-                     "necesito ayuda",
-                     "quiero hablar con una persona",
-                     "me ayudan", "me pueden ayudar",
-                     "atención humana"
-                     ]
+# hablar_con_humano = ["hablar con alguien",
+#                      "necesito ayuda",
+#                      "quiero hablar con una persona",
+#                      "me ayudan", "me pueden ayudar",
+#                      "atención humana"
+#                      ]
 
 # Lista de números a notificar en caso de solicitud de atención humana
 notificar_humanos = ["59179598641", "59176785574"]
@@ -191,6 +191,28 @@ def registrar_solicitud_humana(phone, message):
     fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     solicitudes_sheet.append_row([phone, message, fecha])
 
+# ---------------------------------------------
+# ✅ Tool (Agents SDK) para notificar a humanos
+# ---------------------------------------------
+@function_tool
+def solicitar_asistencia_humana(user_phone: str, user_message: str) -> str:
+    """
+    Notifica al equipo humano por WhatsApp y registra la solicitud en Google Sheets.
+    El agente debe llamar esta herramienta cuando el usuario pida 'hablar con alguien',
+    'atención humana', 'hablar con una persona', etc.
+    """
+    # Registrar en hoja
+    registrar_solicitud_humana(user_phone, user_message)
+
+    # Notificar a los admins
+    for admin_phone in notificar_humanos:
+        send_message(
+            f"📩 Solicitud de atención humana del número: {user_phone}\nMensaje: {user_message}",
+            admin_phone
+        )
+
+    return "Notificación enviada al equipo humano y solicitud registrada."
+
 
 # ---------------------------------------------
 # Webhooks
@@ -222,13 +244,12 @@ def webhook():
             if "-" in value["messages"][0].get("from", ""):
                 print("[INFO] Mensaje ignorado: proviene de un grupo de WhatsApp.")
                 return "ok", 200
-            # Se define más abajo si es necesario, para no interferir con la detección real de usuario nuevo
+
             message = value["messages"][0]
             user_msg = message["text"]["body"]
             user_phone = message["from"]
             ahora = time.time()
-
-            msg_lower = user_msg.lower()  # Centralizado aquí una vez
+            msg_lower = user_msg.lower()
 
             # Limpiar sesión si pasó más de 30 minutos
             if user_phone in contexto_usuarios:
@@ -237,16 +258,6 @@ def webhook():
                     del contexto_usuarios[user_phone]
 
             print(f"[INFO] Mensaje recibido: {user_msg} de {user_phone}")
-
-            # Detectar solicitud de atención humana
-            if any(frase in msg_lower for frase in hablar_con_humano):
-                registrar_solicitud_humana(user_phone, user_msg)
-                send_message("¡Claro! Alguien del equipo de KUDO Bolivia se pondrá en contacto contigo."
-                             , user_phone)
-                for admin_phone in notificar_humanos:
-                    send_message(f"📩 Solicitud de atención humana del número: {user_phone}\nMensaje: {user_msg}",
-                                 admin_phone)
-                return "ok", 200
 
             # Revisar si el mensaje es un número de opción directa
             if user_msg.strip() in respuestas_directas:
@@ -262,10 +273,8 @@ def webhook():
                     send_message(respuestas_directas[key] + menu, user_phone)
                     return "ok", 200
 
-            # Fallback al modelo GPT si no se detectó ninguna intención conocida
+            # Fallback al agente (Agents SDK)
             es_nuevo = user_phone not in contexto_usuarios
-
-            # Si es nuevo, se registra ahora
             if es_nuevo:
                 contexto_usuarios[user_phone] = {"tema": None, "timestamp": ahora}
             prompt = ("Eres un asistente virtual del centro de artes marciales *KUDO Bolivia*, ubicado "
@@ -436,14 +445,20 @@ def webhook():
             if not es_nuevo:
                 prompt += " No inicies con saludos."
 
-            # ✅ Reemplazo didáctico: Agents SDK (Agent + Runner)
             agent = Agent(
                 name="KUDO Bolivia Assistant",
                 model="gpt-4.1",
-                instructions=prompt
+                instructions=prompt,
+                tools=[solicitar_asistencia_humana],
             )
-            result = Runner.run_sync(agent, user_msg)
 
+            # ✅ Pasamos el teléfono como parte del input para que el agente pueda usarlo en la tool
+            agent_input = (
+                f"TELÉFONO_USUARIO: {user_phone}\n"
+                f"MENSAJE_USUARIO: {user_msg}"
+            )
+
+            result = Runner.run_sync(agent, agent_input)
             texto = getattr(result, "final_output", None) or getattr(result, "output", None) or str(result)
 
             contexto_usuarios[user_phone] = {"tema": "libre", "timestamp": ahora}
