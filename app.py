@@ -22,6 +22,10 @@ app = Flask(__name__)
 # Diccionario para almacenar contexto por usuario (tema y tiempo)
 contexto_usuarios = {}
 
+# ✅ Config memoria (30 minutos)
+TTL_SEGUNDOS = 1800
+MAX_TURNOS = 20  # 20 turnos (user+assistant). Ajusta si quieres.
+
 # Cargar credenciales desde variables de entorno
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
@@ -151,14 +155,6 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
 menu = ("\n\n📋 ¿Sobre qué más te gustaría saber?\n"
         "1️⃣ Horarios\n2️⃣ Precios\n3️⃣ Disciplinas\n4️⃣ Inscripción\n5️⃣ Ubicación\n6️⃣ ¿Qué es Kudo?")
 
-# Palabras clave para atención humana
-# hablar_con_humano = ["hablar con alguien",
-#                      "necesito ayuda",
-#                      "quiero hablar con una persona",
-#                      "me ayudan", "me pueden ayudar",
-#                      "atención humana"
-#                      ]
-
 # Lista de números a notificar en caso de solicitud de atención humana
 notificar_humanos = ["59179598641", "59176785574"]
 
@@ -191,6 +187,7 @@ def registrar_solicitud_humana(phone, message):
     fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     solicitudes_sheet.append_row([phone, message, fecha])
 
+
 # ---------------------------------------------
 # ✅ Tool (Agents SDK) para notificar a humanos
 # ---------------------------------------------
@@ -215,6 +212,48 @@ def solicitar_asistencia_humana(user_phone: str, user_message: str) -> str:
 
 
 # ---------------------------------------------
+# ✅ Memoria de conversación (30 min) en RAM
+# ---------------------------------------------
+def get_or_init_user_context(user_phone: str, ahora: float):
+    ctx = contexto_usuarios.get(user_phone)
+    if ctx and (ahora - ctx.get("last_seen", 0) > TTL_SEGUNDOS):
+        ctx = None
+    if not ctx:
+        ctx = {"last_seen": ahora, "history": []}
+        contexto_usuarios[user_phone] = ctx
+    ctx["last_seen"] = ahora
+    return ctx
+
+
+def append_to_history(ctx: dict, role: str, content: str):
+    ctx["history"].append({"role": role, "content": content})
+    # recorte opcional para no crecer infinito
+    if len(ctx["history"]) > (MAX_TURNOS * 2):
+        ctx["history"] = ctx["history"][-(MAX_TURNOS * 2):]
+
+
+def build_agent_input(user_phone: str, user_msg: str, history: list):
+    transcript = []
+    for item in history:
+        if item["role"] == "user":
+            transcript.append(f"Usuario: {item['content']}")
+        else:
+            transcript.append(f"Asistente: {item['content']}")
+    historial_texto = "\n".join(transcript).strip()
+
+    if historial_texto:
+        return (
+            f"TELÉFONO_USUARIO: {user_phone}\n"
+            f"HISTORIAL_30_MIN:\n{historial_texto}\n\n"
+            f"MENSAJE_ACTUAL_USUARIO: {user_msg}"
+        )
+    return (
+        f"TELÉFONO_USUARIO: {user_phone}\n"
+        f"MENSAJE_ACTUAL_USUARIO: {user_msg}"
+    )
+
+
+# ---------------------------------------------
 # Webhooks
 # ---------------------------------------------
 DEBUG_TOKEN = os.getenv("DEBUG_TOKEN", "")
@@ -224,8 +263,6 @@ def debug_contexto():
     token = request.args.get("token", "")
     if not DEBUG_TOKEN or token != DEBUG_TOKEN:
         return {"error": "unauthorized"}, 401
-
-    # OJO: puede ser grande; aquí lo devuelvo completo
     return {"contexto_usuarios": contexto_usuarios}, 200
 
 
@@ -261,7 +298,7 @@ def webhook():
             ahora = time.time()
             msg_lower = user_msg.lower()
 
-            # Limpiar sesión si pasó más de 30 minutos
+            # Limpiar sesión si pasó más de 30 minutos (legacy: por si quedaran registros viejos)
             if user_phone in contexto_usuarios:
                 user_data = contexto_usuarios[user_phone]
                 if "timestamp" in user_data and ahora - user_data["timestamp"] > 1800:
@@ -283,10 +320,8 @@ def webhook():
                     send_message(respuestas_directas[key] + menu, user_phone)
                     return "ok", 200
 
-            # Fallback al agente (Agents SDK)
-            es_nuevo = user_phone not in contexto_usuarios
-            if es_nuevo:
-                contexto_usuarios[user_phone] = {"tema": None, "timestamp": ahora}
+            # ✅ Fallback al agente (Agents SDK) con historial 30 min
+            ctx = get_or_init_user_context(user_phone, ahora)
             prompt = ("Eres un asistente virtual del centro de artes marciales *KUDO Bolivia*, ubicado "
                       "en la calle Cañada Strongest N.º 1847, a media cuadra de la plaza del estudiante, en La Paz, Bolivia."
                       "Tu objetivo es brindar información clara, respetuosa y profesional a todas las personas que "
@@ -452,8 +487,6 @@ def webhook():
                       "🔁 Cuando el usuario solicite la opción 3 (*Disciplinas*), sola o combinada con otras, debes "
                       "incluir también los enlaces de video explicativo de *Kudo* y *BJJ* en tu respuesta."
                       )
-            if not es_nuevo:
-                prompt += " No inicies con saludos."
 
             agent = Agent(
                 name="KUDO Bolivia Assistant",
@@ -462,16 +495,21 @@ def webhook():
                 tools=[solicitar_asistencia_humana],
             )
 
-            # ✅ Pasamos el teléfono como parte del input para que el agente pueda usarlo en la tool
-            agent_input = (
-                f"TELÉFONO_USUARIO: {user_phone}\n"
-                f"MENSAJE_USUARIO: {user_msg}"
-            )
+            # guardamos el mensaje del usuario
+            append_to_history(ctx, "user", user_msg)
+
+            agent_input = build_agent_input(user_phone, user_msg, ctx["history"])
 
             result = Runner.run_sync(agent, agent_input)
             texto = getattr(result, "final_output", None) or getattr(result, "output", None) or str(result)
 
-            contexto_usuarios[user_phone] = {"tema": "libre", "timestamp": ahora}
+            # guardamos la respuesta del bot
+            append_to_history(ctx, "assistant", texto)
+
+            # (opcional) mantenemos también estas llaves legacy si dependes de ellas en otro lado
+            contexto_usuarios[user_phone]["tema"] = "libre"
+            contexto_usuarios[user_phone]["timestamp"] = ahora
+
             registrar_interesado(user_phone, user_msg)
             send_message(texto, user_phone)
 
@@ -479,7 +517,6 @@ def webhook():
         print("Error:", e)
 
     return "ok", 200
-
 
 @app.route("/testsheet")
 def test_sheet():
@@ -489,7 +526,6 @@ def test_sheet():
     except Exception as e:
         print("[ERROR]", e)
         return str(e), 500
-
 
 # ---------------------------------------------
 # Inicio del servidor Flask
