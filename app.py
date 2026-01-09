@@ -188,6 +188,17 @@ def registrar_solicitud_humana(phone, message):
     solicitudes_sheet.append_row([phone, message, fecha])
 
 
+# ✅✅✅ AQUÍ va la limpieza global
+def limpiar_contextos_expirados(ahora):
+    """
+    Borra de contexto_usuarios todos los usuarios cuyo last_seen expiró (30 min).
+    Se recomienda llamarlo al inicio de cada webhook POST.
+    """
+    for phone, ctx in list(contexto_usuarios.items()):
+        if ahora - ctx.get("last_seen", 0) > TTL_SEGUNDOS:
+            del contexto_usuarios[phone]
+
+
 # ---------------------------------------------
 # ✅ Tool (Agents SDK) para notificar a humanos
 # ---------------------------------------------
@@ -198,16 +209,12 @@ def solicitar_asistencia_humana(user_phone: str, user_message: str) -> str:
     El agente debe llamar esta herramienta cuando el usuario pida 'hablar con alguien',
     'atención humana', 'hablar con una persona', etc.
     """
-    # Registrar en hoja
     registrar_solicitud_humana(user_phone, user_message)
-
-    # Notificar a los admins
     for admin_phone in notificar_humanos:
         send_message(
             f"📩 Solicitud de atención humana del número: {user_phone}\nMensaje: {user_message}",
             admin_phone
         )
-
     return "Notificación enviada al equipo humano y solicitud registrada."
 
 
@@ -227,7 +234,6 @@ def get_or_init_user_context(user_phone: str, ahora: float):
 
 def append_to_history(ctx: dict, role: str, content: str):
     ctx["history"].append({"role": role, "content": content})
-    # recorte opcional para no crecer infinito
     if len(ctx["history"]) > (MAX_TURNOS * 2):
         ctx["history"] = ctx["history"][-(MAX_TURNOS * 2):]
 
@@ -298,7 +304,10 @@ def webhook():
             ahora = time.time()
             msg_lower = user_msg.lower()
 
-            # Limpiar sesión si pasó más de 30 minutos (legacy: por si quedaran registros viejos)
+            # ✅✅✅ AQUÍ se llama la limpieza global (borra TODOS los expirados)
+            limpiar_contextos_expirados(ahora)
+
+            # (tu lógica legacy se mantiene)
             if user_phone in contexto_usuarios:
                 user_data = contexto_usuarios[user_phone]
                 if "timestamp" in user_data and ahora - user_data["timestamp"] > 1800:
