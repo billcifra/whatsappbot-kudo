@@ -52,6 +52,7 @@ intenciones = {"1": ["horarioss"],#, "hora", "a qué hora", "qué días", "qué 
                "3": ["disciplinasa"],#, "qué enseñan", "qué clases hay", "qué actividades"],
                "4": ["inscripcióna"],#, "inscribir", "cómo me apunto", "cómo me inscribo", "registrarme"],
                "5": [ "ubicacióna"],#, "dónde están", "dirección", "dónde queda", "cómo llegar"]
+               "7": ["guantes", "guantillas", "mma", "equipo", "comprar"]
                }
 
 respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
@@ -117,12 +118,20 @@ respuestas_directas = {"1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
                             "📹 Videos recomendados:\n"
                             "🎥 Mira este video: https://www.youtube.com/watch?v=NqcE1J7z2eE&\n\n"
                             "🎥 Highlights: https://www.youtube.com/watch?v=JtTWeISoAFA&\n\n"
-                            "🎥 Mundial 2023: https://www.youtube.com/watch?v=jfcne0M5qEU"
+                            "🎥 Mundial 2023: https://www.youtube.com/watch?v=jfcne0M5qEU",
+                       "7": "🥊 *Guantillas para MMA*\n\n"
+                            "¡GUANTILLAS PARA MMA, PARA DARLE CALIDAD A TUS ENTRENAMIENTOS!\n"
+                            "En venta guantillas para MMA, nuevas. También adecuados para tu práctica de cualquier Arte Marcial y entrenamiento en sacos, pads/manoplas, gobernadoras, wall pad (saco de pared). Perfectas para todas las edades por su diseño ergonómico.\n\n"
+                            "💰 *Precios:*\n"
+                            "- 1 par: Bs. 90\n"
+                            "- 2 pares o más: Bs. 80 cada par.\n\n"
+                            "⏰ *Horario de atención para ventas:* Lunes a viernes de 14:00 a 15:30.\n\n"
+                            "📍 *Lugar de entrega:* Calle Cañada Strongest 1847 (Ed. Sarawi) – Dojo “KUDO BOLIVIA”, a media cuadra de la plaza del estudiante."
                        }
 
 # Menú adicional que se agrega al final de cada mensaje
 menu = ("\n\n📋 ¿Sobre qué más te gustaría saber?\n"
-        "1️⃣ Horarios\n2️⃣ Precios\n3️⃣ Disciplinas\n4️⃣ Inscripción\n5️⃣ Ubicación\n6️⃣ ¿Qué es Kudo?")
+        "1️⃣ Horarios\n2️⃣ Precios\n3️⃣ Disciplinas\n4️⃣ Inscripción\n5️⃣ Ubicación\n6️⃣ ¿Qué es Kudo?\n7️⃣ Venta de Guantes")
 
 # Lista de números a notificar en caso de solicitud de atención humana
 notificar_humanos = ["59179598641", "59176785574"]
@@ -393,6 +402,15 @@ def webhook():
                 "recibirte!\n\n"
                 "📍📍 *Ubicación:* Calle Cañada Strongest N.º 1847 - a pasos de la plaza del estudiante, La Paz, "
                 "Bolivia.\n\n"
+                "🥊 *VENTA DE EQUIPAMIENTO (Guantillas de MMA):*\n"
+                "Tenemos a la venta guantillas para MMA nuevas, de alta calidad y diseño ergonómico, perfectas para todas las edades. "
+                "Son ideales para MMA, cualquier Arte Marcial, entrenamiento en sacos, pads/manoplas, gobernadoras y wall pads.\n"
+                "💰 *Precios:*\n"
+                "- 1 par: Bs. 90\n"
+                "- 2 pares o más: Bs. 80 cada par.\n"
+                "⏰ *Horario de atención para ventas:* Lunes a viernes de 14:00 a 15:30.\n"
+                "📍 *Lugar de entrega:* Calle Cañada Strongest 1847 (Ed. Sarawi) – Dojo “KUDO BOLIVIA”, a media cuadra de la plaza del estudiante.\n"
+                "\n"
                 "📌 Puedes ver el mapa en Google Maps:  \n"
                 "https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc\n\n"
                 "👨‍🏫 *Profesores de Jiu-Jitsu en KUDO Bolivia:* "
@@ -423,6 +441,7 @@ def webhook():
                 "4️⃣ Inscripción\n"
                 "5️⃣ Ubicación\n"
                 "6️⃣ ¿Qué es Kudo?\n"
+                "7️⃣ Venta de Guantes\n"
                 "\n"
                 "📌 Siempre responde en español neutro, con cortesía y como si formaras parte del equipo de "
                 "*KUDO Bolivia*. Si no conoces la respuesta exacta, invita amablemente a visitar el dojo para "
