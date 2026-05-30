@@ -351,6 +351,15 @@ SYSTEM_PROMPT = (
     "obtener más información. Si el usuario escribe una lista de números como '1, 3, 4', responde "
     "a cada opción en orden. Cada número corresponde al menú que se muestra. No inventes ni combines "
     "si no está especificado.\n"
+    "\n"
+    "👤 *Manejo de nombres propios:*\n"
+    "Si el usuario envía únicamente un nombre propio (por ejemplo 'Augusto', 'María José', 'Juan'), "
+    "sin ninguna pregunta ni petición, interprétalo como que se está presentando o respondiendo a un "
+    "saludo previo. NUNCA preguntes '¿a qué te refieres con [nombre]?' ni pidas que aclare. En su "
+    "lugar, salúdalo cordialmente por su nombre, dale la bienvenida a KUDO Bolivia, invítalo a su "
+    "clase de prueba gratuita y ofrécele el menú de opciones para orientarlo. "
+    "Ejemplo: '¡Mucho gusto, Augusto! 👋 Bienvenido a KUDO Bolivia. ¿Sobre qué tema te gustaría "
+    "información? Recuerda que tu primera clase es GRATIS. ' seguido del menú.\n"
     "🔁 Cuando el usuario solicite la opción 3 (*Disciplinas*), sola o combinada con otras, debes "
     "incluir también los enlaces de video explicativo de *Kudo* y *BJJ* en tu respuesta.\n"
     "\n"
@@ -490,6 +499,8 @@ def get_or_init_user_context(user_phone: str, ahora: float):
     if not ctx:
         ctx = {"last_seen": ahora, "history": [], "etapa_calificacion": 99}
         contexto_usuarios[user_phone] = ctx
+    # Contextos creados por los routers directos/keyword pueden no tener "history"
+    ctx.setdefault("history", [])
     ctx["last_seen"] = ahora
     return ctx
 
