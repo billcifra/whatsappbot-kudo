@@ -164,7 +164,7 @@ respuestas_directas = {
          "- 1 par: Bs. 90\n"
          "- 2 pares o más: Bs. 80 cada par.\n\n"
          "⏰ *Horario de atención para ventas:* Lunes a viernes de 14:00 a 15:30.\n\n"
-         "📍 *Lugar de entrega:* Calle Cañada Strongest 1847 (Ed. Sarawi) – Dojo "KUDO BOLIVIA", a media cuadra de la plaza del estudiante."
+         "📍 *Lugar de entrega:* Calle Cañada Strongest 1847 (Ed. Sarawi) – Dojo \"KUDO BOLIVIA\", a media cuadra de la plaza del estudiante."
 }
 
 # Menú adicional que se agrega al final de cada mensaje
@@ -307,7 +307,7 @@ SYSTEM_PROMPT = (
     "- 1 par: Bs. 90\n"
     "- 2 pares o más: Bs. 80 cada par.\n"
     "⏰ *Horario de atención para ventas:* Lunes a viernes de 14:00 a 15:30.\n"
-    "📍 *Lugar de entrega:* Calle Cañada Strongest 1847 (Ed. Sarawi) – Dojo "KUDO BOLIVIA", a media cuadra de la plaza del estudiante.\n"
+    "📍 *Lugar de entrega:* Calle Cañada Strongest 1847 (Ed. Sarawi) – Dojo \"KUDO BOLIVIA\", a media cuadra de la plaza del estudiante.\n"
     "\n"
     "📌 Puedes ver el mapa en Google Maps:  \n"
     "https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc\n\n"
