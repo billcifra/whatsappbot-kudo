@@ -118,8 +118,11 @@ respuestas_directas = {
          "     • Martes y Jueves: 7:00–8:30\n"
          "   🌙 *Turno noche:*\n"
          "     • Martes y Jueves: 18:00–19:30\n",
-    "2": "👉 *Precios:*\nBs. 250 la mensualidad por persona. "
-         "Consulta por descuentos directamente con el equipo del dojo.",
+    "2": "👉 *Precios:*\n"
+         "Bs. 250 la mensualidad por persona (3 clases por semana).\n\n"
+         "Si preferís asistir solo un día, dos días o únicamente los sábados, "
+         "es posible coordinar una configuración diferente. "
+         "Acercate al dojo para consultar el precio según tu disponibilidad. 😊",
     "3": "👉 *Disciplinas que ofrecemos:"
          "*\n🥋 Kudo\n\t"
          "Que es KUDO: https://www.youtube.com/watch?v=NqcE1J7z2eE\n\n"
@@ -288,8 +291,10 @@ SYSTEM_PROMPT = (
     "   🌙 *Turno noche:*\n"
     "     • Martes y Jueves: 18:00–19:30\n"
     "\n"
-    "💰 *Precios:* Bs. 250 mensual por persona. Consulta por descuentos directamente con el equipo "
-    "del dojo.\n\n"
+    "💰 *Precios:* Bs. 250 mensual por persona (3 clases por semana). "
+    "Si alguien prefiere asistir solo un día, dos días o únicamente los sábados, "
+    "es posible coordinar una configuración diferente con descuento; "
+    "debe acercarse al dojo para consultarlo directamente.\n\n"
     "🆓 *Clase de prueba GRATUITA:*\n"
     "¡Todas nuestras disciplinas ofrecen una clase de prueba completamente GRATIS, sin compromiso!\n\n"
     "🧥 *Indumentaria:*\n"
