@@ -413,6 +413,38 @@ def agregar_saludo(texto, phone):
     return f"¡Hola, {nombre}! 😊\n\n{texto}" if nombre else texto
 
 
+# Palabras que indican que el mensaje es una pregunta/consulta, no un nombre
+_PALABRAS_NO_NOMBRE = {
+    "quiero", "quisiera", "necesito", "tengo", "hola", "buenas", "buen",
+    "info", "información", "informacion", "consulta", "precio", "precios",
+    "horario", "horarios", "cuanto", "cuánto", "como", "cómo", "cuando",
+    "cuándo", "donde", "dónde", "qué", "que", "quien", "quién",
+    "si", "no", "me", "mi", "hay", "tienen", "dan", "hacen", "hay",
+    "saber", "conocer", "ver", "inscribir", "inscribirme", "quisiera",
+    "interesa", "interesado", "interesada", "clases", "clase", "curso",
+    "buenos", "tardes", "noches", "días", "dias", "gracias", "ok",
+    "quiero", "queria", "quería", "quisieras", "puede", "pueden",
+}
+
+def parece_nombre(texto):
+    """Retorna True solo si el texto parece ser un nombre propio y no una pregunta."""
+    palabras = texto.strip().split()
+    # Más de 3 palabras → casi seguro es una frase, no un nombre
+    if len(palabras) > 3:
+        return False
+    # Contiene signos de pregunta o exclamación → es una pregunta
+    if "?" in texto or "!" in texto:
+        return False
+    # Contiene números → no es un nombre
+    if any(c.isdigit() for c in texto):
+        return False
+    # Alguna palabra coincide con vocabulario de preguntas/saludos
+    for palabra in palabras:
+        if palabra.lower().rstrip(".,") in _PALABRAS_NO_NOMBRE:
+            return False
+    return True
+
+
 def limpiar_contextos_expirados(ahora):
     """Borra de contexto_usuarios todos los usuarios cuyo last_seen expiró (30 min)."""
     for phone, ctx in list(contexto_usuarios.items()):
@@ -587,12 +619,14 @@ def webhook():
             etapa = ctx_existente.get("etapa_calificacion", 99)
 
             if etapa == 0:
-                # Esperando nombre — si escribe número o keyword directa, saltar calificación
-                if user_msg.strip() in respuestas_directas or any(
+                # Esperando nombre — evaluar si el mensaje realmente parece un nombre
+                es_opcion_directa = user_msg.strip() in respuestas_directas
+                es_keyword = any(
                     frase in msg_lower for frases in intenciones.values() for frase in frases
-                ):
+                )
+                if es_opcion_directa or es_keyword or not parece_nombre(user_msg):
+                    # No parece un nombre → saltar captura y caer al router normal
                     ctx_existente["etapa_calificacion"] = 99
-                    # cae al router normal de abajo
                 else:
                     nombre = user_msg.strip().split()[0].capitalize()
                     ctx_existente.update({
