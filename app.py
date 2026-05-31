@@ -402,6 +402,7 @@ def send_message(text, phone):
                "type": "text",
                "text": {"body": text}
                }
+    print(f"[INFO] Respuesta del bot a {phone}: {text}")
     response = requests.post(url, headers=headers, json=payload)
     print("[INFO] WhatsApp API response:", response.status_code, response.text)
 
