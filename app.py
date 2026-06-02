@@ -142,30 +142,6 @@ BIENVENIDA = (
     "Para ayudarte mejor, ¿cómo te llamas? 😊"
 )
 
-CALIFICACION_PASO_1 = (
-    "¡Mucho gusto, {nombre}! 👋\n\n"
-    "¿Qué disciplina te llama más la atención?\n\n"
-    "🥋 *Kudo* — artes marciales completas (golpes + lucha)\n"
-    "🥋 *Brazilian Jiu-Jitsu (BJJ)* — combate en el suelo\n"
-    "🥋 *Kick Boxing* — golpes de pie\n"
-    "🥋 *Defensa Personal* — clases privadas\n\n"
-    "También puedes escribir directamente tu pregunta si prefieres."
-)
-
-CALIFICACION_PASO_2 = (
-    "¡Excelente elección! 💪 ¿Qué turno te viene mejor?\n\n"
-    "🕗 *Mañana* (7:00–10:00)\n"
-    "🌆 *Tarde* (16:30–18:30)\n"
-    "🌙 *Noche* (18:00–21:00)\n\n"
-    "O dime directamente el día que prefieres."
-)
-
-CALIFICACION_PASO_3 = (
-    "¡Perfecto! 🎯 Tu *primera clase es completamente GRATIS*.\n\n"
-    "¿Cuándo te gustaría venir? Dime el día (ej: 'este martes', 'el sábado') "
-    "y te confirmo si hay clase disponible."
-)
-
 # Lista de números a notificar en caso de solicitud de atención humana
 notificar_humanos = ["59179598641", "59176785574"]
 
@@ -338,6 +314,26 @@ SYSTEM_PROMPT = (
     "Esta invitación es prioritaria porque el bot se usa en campañas de publicidad y el objetivo "
     "es convertir el interés en una visita al dojo.\n"
     "\n"
+    "🎯 *EMBUDO DE CALIFICACIÓN (recolección de datos del prospecto):*\n"
+    "Además de responder lo que el usuario pregunte, tu segundo objetivo es ir recolectando, de "
+    "forma natural y conversacional, estos 4 datos del prospecto, en este orden ideal:\n"
+    "  1. *Nombre* (al usuario nuevo ya se le pidió el nombre en el mensaje de bienvenida; si en "
+    "el historial el usuario acaba de responder con su nombre, salúdalo por su nombre y continúa).\n"
+    "  2. *Disciplina* de interés (Kudo, BJJ, Kick Boxing o Defensa Personal).\n"
+    "  3. *Turno* preferido (mañana, tarde o noche).\n"
+    "  4. *Día* en que podría asistir a su clase de prueba gratuita.\n"
+    "Haz UNA pregunta a la vez para no abrumar. NO interrogues de golpe ni repitas datos que el "
+    "usuario ya te dio (revísalos en PERFIL_DEL_PROSPECTO y en el historial).\n"
+    "MUY IMPORTANTE – flexibilidad: si en cualquier momento el usuario hace una pregunta o un "
+    "comentario fuera de este guion (precio, ubicación, dudas, etc.), PRIMERO respóndele esa "
+    "consulta con normalidad y LUEGO retoma con naturalidad la siguiente pregunta del embudo que "
+    "falte. Nunca ignores lo que el usuario dice con tal de seguir el guion.\n"
+    "Cada vez que el usuario te entregue uno de estos datos (nombre, disciplina, turno o día), "
+    "DEBES llamar a la herramienta `guardar_datos_prospecto` con los datos que tengas hasta el "
+    "momento, para registrarlos. Puedes llamarla varias veces a medida que obtienes más datos. "
+    "Cuando ya tengas el día de la visita, confirma el horario que corresponde a su disciplina y "
+    "ese día (respetando la REGLA ESTRICTA de horarios) e impulsa el cierre de la clase de prueba.\n"
+    "\n"
     "⚠️ *REGLA ESTRICTA – Horarios:*\n"
     "NUNCA inventes, supongas ni modifiques horarios que no estén exactamente escritos en este "
     "prompt. Los únicos horarios válidos son los que aparecen en la sección 'Horarios generales "
@@ -382,9 +378,9 @@ def send_message(text, phone):
     print("[INFO] WhatsApp API response:", response.status_code, response.text)
 
 
-def registrar_interesado(phone, message, nombre="", disciplina="", turno=""):
+def registrar_interesado(phone, message, nombre="", disciplina="", turno="", dia=""):
     fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    interesados_sheet.append_row([phone, message, fecha, nombre, disciplina, turno])
+    interesados_sheet.append_row([phone, message, fecha, nombre, disciplina, turno, dia])
 
 
 def registrar_solicitud_humana(phone, message):
@@ -396,38 +392,6 @@ def agregar_saludo(texto, phone):
     """Antepone el nombre del usuario si está disponible en el contexto."""
     nombre = contexto_usuarios.get(phone, {}).get("nombre")
     return f"¡Hola, {nombre}! 😊\n\n{texto}" if nombre else texto
-
-
-# Palabras que indican que el mensaje es una pregunta/consulta, no un nombre
-_PALABRAS_NO_NOMBRE = {
-    "quiero", "quisiera", "necesito", "tengo", "hola", "buenas", "buen",
-    "info", "información", "informacion", "consulta", "precio", "precios",
-    "horario", "horarios", "cuanto", "cuánto", "como", "cómo", "cuando",
-    "cuándo", "donde", "dónde", "qué", "que", "quien", "quién",
-    "si", "no", "me", "mi", "hay", "tienen", "dan", "hacen", "hay",
-    "saber", "conocer", "ver", "inscribir", "inscribirme", "quisiera",
-    "interesa", "interesado", "interesada", "clases", "clase", "curso",
-    "buenos", "tardes", "noches", "días", "dias", "gracias", "ok",
-    "quiero", "queria", "quería", "quisieras", "puede", "pueden",
-}
-
-def parece_nombre(texto):
-    """Retorna True solo si el texto parece ser un nombre propio y no una pregunta."""
-    palabras = texto.strip().split()
-    # Más de 3 palabras → casi seguro es una frase, no un nombre
-    if len(palabras) > 3:
-        return False
-    # Contiene signos de pregunta o exclamación → es una pregunta
-    if "?" in texto or "!" in texto:
-        return False
-    # Contiene números → no es un nombre
-    if any(c.isdigit() for c in texto):
-        return False
-    # Alguna palabra coincide con vocabulario de preguntas/saludos
-    for palabra in palabras:
-        if palabra.lower().rstrip(".,") in _PALABRAS_NO_NOMBRE:
-            return False
-    return True
 
 
 def limpiar_contextos_expirados(ahora):
@@ -456,12 +420,46 @@ def solicitar_asistencia_humana(user_phone: str, user_message: str) -> str:
     return "Notificación enviada al equipo humano y solicitud registrada."
 
 
+# ---------------------------------------------
+# ✅ Tool (Agents SDK) para guardar datos del prospecto (embudo de calificación)
+# ---------------------------------------------
+@function_tool
+def guardar_datos_prospecto(user_phone: str, nombre: str = "", disciplina: str = "",
+                            turno: str = "", dia: str = "") -> str:
+    """
+    Guarda en Google Sheets los datos del prospecto recolectados durante la conversación.
+    Llama a esta herramienta CADA VEZ que el usuario te entregue uno de estos datos:
+    su nombre, la disciplina de interés, el turno preferido o el día que podría asistir.
+    Puedes llamarla varias veces a medida que obtienes más datos; envía siempre todos los
+    que tengas hasta el momento (los que aún no conozcas déjalos vacíos).
+    """
+    ctx = contexto_usuarios.setdefault(user_phone, {})
+    if nombre:
+        ctx["nombre"] = nombre
+    if disciplina:
+        ctx["disciplina_raw"] = disciplina
+    if turno:
+        ctx["turno_raw"] = turno
+    if dia:
+        ctx["dia_raw"] = dia
+    ctx["last_seen"] = time.time()
+    registrar_interesado(
+        user_phone,
+        "[DATOS PROSPECTO]",
+        nombre=ctx.get("nombre", ""),
+        disciplina=ctx.get("disciplina_raw", ""),
+        turno=ctx.get("turno_raw", ""),
+        dia=ctx.get("dia_raw", ""),
+    )
+    return "Datos del prospecto guardados."
+
+
 # Agente instanciado una sola vez al arrancar (no en cada request)
 kudo_agent = Agent(
     name="KUDO Bolivia Assistant",
     model="gpt-4.1",
     instructions=SYSTEM_PROMPT,
-    tools=[solicitar_asistencia_humana],
+    tools=[solicitar_asistencia_humana, guardar_datos_prospecto],
 )
 
 
@@ -572,6 +570,9 @@ def webhook():
             print(f"[INFO] Mensaje recibido: {user_msg} de {user_phone}")
 
             # --- BIENVENIDA PARA USUARIOS NUEVOS ---
+            # El saludo inicial es determinístico (gratis e instantáneo). A partir de la
+            # siguiente respuesta, el agente conduce el embudo de calificación. Sembramos la
+            # bienvenida en el historial para que el agente sepa que ya saludó y pidió el nombre.
             es_nuevo = (user_phone not in usuarios_bienvenidos and
                         user_phone not in contexto_usuarios)
             if es_nuevo:
@@ -579,17 +580,19 @@ def webhook():
                 registrar_interesado(user_phone, f"[NUEVO USUARIO] {user_msg}")
                 contexto_usuarios[user_phone] = {
                     "last_seen": ahora, "timestamp": ahora,
-                    "history": [], "tema": "nuevo", "etapa_calificacion": 0,
+                    "history": [{"role": "assistant", "content": BIENVENIDA}], "tema": "nuevo",
                 }
                 send_message(BIENVENIDA, user_phone)
                 return "ok", 200
 
-            # --- MENSAJE CONTEXTUAL SI HUBO SILENCIO LARGO (>2h con flujo incompleto) ---
+            # --- MENSAJE CONTEXTUAL SI HUBO SILENCIO LARGO (>2h con perfil incompleto) ---
             ctx_existente = contexto_usuarios.get(user_phone, {})
             ultimo_contacto = ctx_existente.get("last_seen", ahora)
-            etapa_actual = ctx_existente.get("etapa_calificacion", 99)
+            perfil_completo = all(
+                ctx_existente.get(k) for k in ("nombre", "disciplina_raw", "turno_raw", "dia_raw")
+            )
 
-            if (ahora - ultimo_contacto) > SILENCIO_RE_ENGANCHE and etapa_actual < 99:
+            if (ahora - ultimo_contacto) > SILENCIO_RE_ENGANCHE and not perfil_completo:
                 nombre = ctx_existente.get("nombre", "")
                 saludo = f", {nombre}" if nombre else ""
                 send_message(
@@ -598,48 +601,6 @@ def webhook():
                     user_phone
                 )
                 ctx_existente["last_seen"] = ahora
-
-            # --- FLUJO DE CALIFICACIÓN (embudo de conversión para leads de publicidad) ---
-            ctx_existente = contexto_usuarios.get(user_phone, {})
-            etapa = ctx_existente.get("etapa_calificacion", 99)
-
-            if etapa == 0:
-                # Esperando nombre — evaluar si el mensaje realmente parece un nombre
-                es_opcion_directa = user_msg.strip() in respuestas_directas
-                if es_opcion_directa or not parece_nombre(user_msg):
-                    # No parece un nombre → saltar captura y caer al router normal
-                    ctx_existente["etapa_calificacion"] = 99
-                else:
-                    nombre = user_msg.strip().split()[0].capitalize()
-                    ctx_existente.update({
-                        "nombre": nombre, "etapa_calificacion": 1,
-                        "last_seen": ahora, "timestamp": ahora,
-                    })
-                    send_message(CALIFICACION_PASO_1.format(nombre=nombre), user_phone)
-                    return "ok", 200
-
-            elif etapa == 1:
-                ctx_existente.update({
-                    "disciplina_raw": user_msg, "etapa_calificacion": 2,
-                    "last_seen": ahora, "timestamp": ahora,
-                })
-                send_message(CALIFICACION_PASO_2, user_phone)
-                return "ok", 200
-
-            elif etapa == 2:
-                ctx_existente.update({
-                    "turno_raw": user_msg, "etapa_calificacion": 3,
-                    "last_seen": ahora, "timestamp": ahora,
-                })
-                send_message(CALIFICACION_PASO_3, user_phone)
-                return "ok", 200
-
-            elif etapa == 3:
-                ctx_existente.update({
-                    "dia_raw": user_msg, "etapa_calificacion": 99,
-                    "last_seen": ahora, "timestamp": ahora,
-                })
-                # Cae al agente con perfil completo (no hacer return)
 
             # --- ROUTER DE OPCIONES DIRECTAS (número 1-7) ---
             if user_msg.strip() in respuestas_directas:
