@@ -43,48 +43,8 @@ solicitudes_sheet = gs_client.open_by_key(GOOGLE_SHEET_KEY).worksheet("Solicitud
 interesados_sheet = gs_client.open_by_key(GOOGLE_SHEET_KEY).worksheet("Interesados")
 
 # ---------------------------------------------
-# Definición de intenciones y respuestas directas
+# Respuestas directas del menú numérico (1–7)
 # ---------------------------------------------
-
-intenciones = {
-    "1": [
-        "horario", "horarios", "hora", "horas", "cuando", "cuándo",
-        "a qué hora", "qué días", "que dias", "qué horario", "que horario",
-        "turno", "turnos", "mañana", "tarde", "noche", "clases",
-        "dias de clase", "días de clase", "abren", "abren hoy",
-    ],
-    "2": [
-        "precio", "precios", "cuanto cuesta", "cuánto cuesta", "costo",
-        "costos", "cuánto cobran", "cuanto cobran", "tarifa", "tarifas",
-        "mensualidad", "cuanto es", "cuánto es", "pagar", "pago",
-        "vale", "cuanto vale", "cuánto vale", "bs", "bolivianos",
-    ],
-    "3": [
-        "disciplina", "disciplinas", "qué enseñan", "que enseñan",
-        "qué clases hay", "que clases hay", "actividades", "deportes",
-        "bjj", "jiu jitsu", "jiu-jitsu", "kickboxing",
-        "kick boxing", "boxeo", "lucha", "artes marciales",
-        "defensa personal", "qué ofrecen", "que ofrecen",
-    ],
-    "4": [
-        "inscribir", "inscripcion", "inscripción", "inscribirme",
-        "como me inscribo", "cómo me inscribo", "registrar", "registrarme",
-        "apuntarme", "como me apunto", "cómo me apunto", "quiero empezar",
-        "como empiezo", "cómo empiezo", "empezar", "comenzar",
-        "unirme", "quiero unirme", "matricula", "matrícula",
-    ],
-    "5": [
-        "ubicacion", "ubicación", "donde están", "dónde están",
-        "dirección", "direccion", "donde queda", "dónde queda",
-        "como llegar", "cómo llegar", "mapa", "maps", "google maps",
-        "donde es", "dónde es", "donde entrenan",
-    ],
-    "7": [
-        "guantes", "guantillas", "mma", "equipo", "comprar",
-        "venta", "equipamiento", "implementos", "precio guantes",
-        "cuanto cuestan los guantes",
-    ],
-}
 
 respuestas_directas = {
     "1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
@@ -281,15 +241,22 @@ SYSTEM_PROMPT = (
     "     • Lunes, Miércoles y Viernes: 17:00–18:30\n"
     "   🌙 *Turno noche:*\n"
     "     • Lunes, Miércoles y Viernes: 19:30–21:00\n"
+    "     ⛔ Brazilian Jiu-Jitsu NO tiene clases los sábados ni domingos.\n"
     "\n"
     "📍 *Brazilian Jiu-Jitsu Kids*\n"
     "     • Lunes, Miércoles y Viernes: 18:30–19:30\n"
+    "     ⛔ Brazilian Jiu-Jitsu Kids NO tiene clases los sábados ni domingos.\n"
     "\n"
     "📍 *Kick Boxing*\n"
     "   🕗 *Turno mañana:*\n"
     "     • Martes y Jueves: 7:00–8:30\n"
     "   🌙 *Turno noche:*\n"
     "     • Martes y Jueves: 18:00–19:30\n"
+    "     ⛔ Kick Boxing NO tiene clases los sábados ni domingos.\n"
+    "\n"
+    "🔔 *Resumen de SÁBADOS:* las ÚNICAS disciplinas con clases los sábados son "
+    "Kudo Niños (10:30–12:00) y Kudo Jóvenes y Adultos (9:00–10:30). "
+    "Brazilian Jiu-Jitsu (Adultos y Kids) y Kick Boxing NO abren los sábados.\n"
     "\n"
     "💰 *Precios:* Bs. 250 mensual por persona (3 clases por semana). "
     "Si alguien prefiere asistir solo un día, dos días o únicamente los sábados, "
@@ -378,6 +345,14 @@ SYSTEM_PROMPT = (
     "no figura aquí, responde honestamente: 'No tengo ese dato exacto, te recomiendo consultar "
     "directamente en el dojo o escribirnos para confirmarlo.' Está prohibido completar, extrapolar "
     "o inventar cualquier horario.\n"
+    "Cada horario pertenece SOLO a la disciplina y al día bajo los que aparece escrito. JAMÁS "
+    "apliques el horario de una disciplina a otra, ni el de un día a otro día. Por ejemplo, si "
+    "BJJ solo figura en lunes, miércoles y viernes, entonces BJJ NO tiene clases los sábados, "
+    "aunque otras disciplinas sí las tengan ese día. Si una disciplina no aparece listada para "
+    "un día concreto, debes decir explícitamente que esa disciplina no tiene clases ese día. "
+    "Antes de mencionar cualquier horario de sábado (u otro día), verifica que esa disciplina "
+    "EXACTA aparezca listada para ese día exacto en la sección de horarios; si no aparece, NO "
+    "la incluyas.\n"
     "\n"
     "📅 *Coordinación de visita:*\n"
     "Cuando el usuario indique un día o momento para venir al dojo (ej: 'puedo el martes', "
@@ -592,8 +567,6 @@ def webhook():
             user_msg = message["text"]["body"]
             user_phone = message["from"]
             ahora = time.time()
-            msg_lower = user_msg.lower()
-
             limpiar_contextos_expirados(ahora)
 
             print(f"[INFO] Mensaje recibido: {user_msg} de {user_phone}")
@@ -633,10 +606,7 @@ def webhook():
             if etapa == 0:
                 # Esperando nombre — evaluar si el mensaje realmente parece un nombre
                 es_opcion_directa = user_msg.strip() in respuestas_directas
-                es_keyword = any(
-                    frase in msg_lower for frases in intenciones.values() for frase in frases
-                )
-                if es_opcion_directa or es_keyword or not parece_nombre(user_msg):
+                if es_opcion_directa or not parece_nombre(user_msg):
                     # No parece un nombre → saltar captura y caer al router normal
                     ctx_existente["etapa_calificacion"] = 99
                 else:
@@ -680,16 +650,7 @@ def webhook():
                 send_message(agregar_saludo(respuestas_directas[key], user_phone) + menu, user_phone)
                 return "ok", 200
 
-            # --- ROUTER DE INTENCIONES POR KEYWORD ---
-            for key, frases in intenciones.items():
-                if any(frase in msg_lower for frase in frases):
-                    if user_phone not in contexto_usuarios:
-                        contexto_usuarios[user_phone] = {}
-                    contexto_usuarios[user_phone].update({"tema": key, "timestamp": ahora, "last_seen": ahora})
-                    send_message(agregar_saludo(respuestas_directas[key], user_phone) + menu, user_phone)
-                    return "ok", 200
-
-            # --- FALLBACK AL AGENTE IA con historial y perfil del prospecto ---
+            # ---TODO LO DEMÁS VA AL AGENTE IA con historial y perfil del prospecto ---
             ctx = get_or_init_user_context(user_phone, ahora)
             append_to_history(ctx, "user", user_msg)
 
