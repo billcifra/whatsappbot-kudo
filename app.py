@@ -28,6 +28,17 @@ TTL_SEGUNDOS = 1800
 MAX_TURNOS = 20  # 20 turnos (user+assistant). Ajusta si quieres.
 SILENCIO_RE_ENGANCHE = 7200  # 2 horas — umbral para mensaje contextual de retorno
 
+# ---------------------------------------------
+# 📅 Feriados / días SIN clases de prueba
+# ---------------------------------------------
+# Días en los que el dojo NO dicta clases (feriados, cierres, etc.).
+# El agente NO debe coordinar ni confirmar clases de prueba en estas fechas.
+# Formato: "YYYY-MM-DD": "motivo". Edita esta lista para agregar o quitar feriados.
+FERIADOS = {
+    "2026-06-04": "Feriado (jueves) — sin clases",
+    "2026-06-05": "Feriado (viernes) — sin clases",
+}
+
 # Cargar credenciales desde variables de entorno
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
@@ -354,7 +365,15 @@ SYSTEM_PROMPT = (
     "Cuando el usuario indique un día o momento para venir al dojo (ej: 'puedo el martes', "
     "'voy el sábado'), responde confirmando el horario de clase que corresponde a ese día y "
     "disciplina de interés, y cierra con: '¡Te esperamos! ¿Quieres que avisemos al instructor?' "
-    "Si el usuario confirma, usa la herramienta solicitar_asistencia_humana para notificar al equipo."
+    "Si el usuario confirma, usa la herramienta solicitar_asistencia_humana para notificar al equipo.\n"
+    "\n"
+    "🚫 *REGLA ESTRICTA – Feriados / días sin clases:*\n"
+    "Al inicio de cada mensaje recibirás la fecha de hoy (FECHA_HOY) y, si corresponde, una lista "
+    "de FERIADOS próximos en los que el dojo NO dicta clases. NUNCA coordines, confirmes ni "
+    "agendes una clase de prueba para un día que figure como feriado. Si el usuario propone venir "
+    "en una de esas fechas (o se refiere a ella, ej: 'este jueves', 'el viernes'), discúlpate "
+    "amablemente, explícale que ese día es feriado y no hay clases, y ofrécele coordinar otro día "
+    "disponible. No uses solicitar_asistencia_humana para agendar visitas en días feriados."
 )
 
 
@@ -485,7 +504,21 @@ def append_to_history(ctx: dict, role: str, content: str):
         ctx["history"] = ctx["history"][-(MAX_TURNOS * 2):]
 
 
+def construir_contexto_fechas():
+    """Devuelve un bloque de texto con la fecha de hoy y los feriados futuros (o de hoy)."""
+    hoy = time.strftime("%Y-%m-%d", time.localtime())
+    dias_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+    dia_nombre = dias_semana[time.localtime().tm_wday]
+    bloque = f"FECHA_HOY: {hoy} ({dia_nombre})\n"
+    feriados_relevantes = {f: motivo for f, motivo in FERIADOS.items() if f >= hoy}
+    if feriados_relevantes:
+        lineas = [f"  • {f}: {motivo}" for f, motivo in sorted(feriados_relevantes.items())]
+        bloque += "FERIADOS (NO hay clases, no coordines clases de prueba estos días):\n" + "\n".join(lineas) + "\n"
+    return bloque + "\n"
+
+
 def build_agent_input(user_phone: str, user_msg: str, history: list, perfil: dict = None):
+    contexto_fechas = construir_contexto_fechas()
     transcript = []
     for item in history:
         if item["role"] == "user":
@@ -511,12 +544,14 @@ def build_agent_input(user_phone: str, user_msg: str, history: list, perfil: dic
     if historial_texto:
         return (
             f"TELÉFONO_USUARIO: {user_phone}\n"
+            f"{contexto_fechas}"
             f"{perfil_texto}"
             f"HISTORIAL_30_MIN:\n{historial_texto}\n\n"
             f"MENSAJE_ACTUAL_USUARIO: {user_msg}"
         )
     return (
         f"TELÉFONO_USUARIO: {user_phone}\n"
+        f"{contexto_fechas}"
         f"{perfil_texto}"
         f"MENSAJE_ACTUAL_USUARIO: {user_msg}"
     )
