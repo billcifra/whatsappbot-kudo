@@ -57,88 +57,90 @@ interesados_sheet = gs_client.open_by_key(GOOGLE_SHEET_KEY).worksheet("Interesad
 # Respuestas directas del menú numérico (1–7)
 # ---------------------------------------------
 
+# CTA estándar hacia la clase de prueba gratuita. Se envía como mensaje de cierre
+# en las respuestas del menú para impulsar la conversión en CADA interacción.
+CTA_PRUEBA = ("🎁 Tu *primera clase es GRATIS*, sin compromiso.\n"
+              "¿Te coordino tu clase de prueba? 🥋 Dime qué día te viene bien.")
+
+# Cada opción es una LISTA de mensajes cortos (chunks). El webhook los envía como
+# mensajes separados para que sean fáciles de escanear en el celular, y cierra con
+# el CTA a la clase de prueba. Los horarios se conservan EXACTOS (no inventar/alterar).
 respuestas_directas = {
-    "1": "👉 *Horarios de clases en KUDO Bolivia:*\n• "
-         "📍 *Kudo Niños (6 a 13 años)*\n"
-         "   🕗 *Turno mañana:*\n"
-         "     • Martes y Jueves: 8:30–10:00\n"
-         "     • Sábados: 10:30–12:00\n"
-         "   🌆 *Turno tarde:*\n"
-         "     • Martes y Jueves: 16:30–18:00\n"
-         "     • Sábados: 10:30–12:00\n"
-         "\n"
-         "📍 *Kudo Jóvenes y Adultos*\n"
-         "   🕗 *Turno mañana:*\n"
-         "     • Lunes y Miercoles: 8:30–10:00\n"
-         "     • Sábados: 9:00–10:30\n"
-         "   🌙 *Turno noche:*\n"
-         "     • Martes y Jueves: 19:30–21:00\n"
-         "     • Sábados: 9:00–10:30\n"
-         "\n"
-         "📍 *Brazilian Jiu-Jitsu Jóvenes y Adultos*\n"
-         "   🌆 *Turno tarde:*\n"
-         "     • Lunes, Miércoles y Viernes: 17:00–18:30\n"
-         "   🌙 *Turno noche:*\n"
-         "     • Lunes, Miércoles y Viernes: 19:30–21:00\n"
-         "\n"
-         "📍 *Brazilian Jiu-Jitsu Kids*\n"
-         "     • Lunes, Miércoles y Viernes: 18:30–19:30\n"
-         "\n"
-         "📍 *Kick Boxing*\n"
-         "   🕗 *Turno mañana:*\n"
-         "     • Martes y Jueves: 7:00–8:30\n"
-         "   🌙 *Turno noche:*\n"
-         "     • Martes y Jueves: 18:00–19:30\n",
-    "2": "👉 *Precios:*\n"
-         "Bs. 250 la mensualidad por persona (3 clases por semana).\n\n"
-         "Si preferís asistir solo un día, dos días o únicamente los sábados, "
-         "es posible coordinar una configuración diferente. "
-         "Acercate al dojo para consultar el precio según tu disponibilidad. 😊",
-    "3": "👉 *Disciplinas que ofrecemos:"
-         "*\n🥋 Kudo\n\t"
-         "Que es KUDO: https://www.youtube.com/watch?v=NqcE1J7z2eE\n\n"
-         "*\n🥋 Brazilian Jiu-Jitsu\n\t"
-         "Que es BJJ: https://www.youtube.com/watch?v=tztK3dJksk0\n\n"
-         "*\n🥋 Kick Boxing\n\t"
-         "Que es Kick Boxing: https://www.youtube.com/watch?v=Sh9cVUidnr0&pp=ygULa2ljayBib3hpbmc%3D",
-    "4": (
-        "👉 *¿Cómo inscribirte en KUDO Bolivia?*\n\n"
-        "¡Es muy sencillo! Solo ven al dojo y te inscribimos en el momento.\n\n"
-        "📍 Calle Cañada Strongest N.º 1847, a pasos de la plaza del estudiante, La Paz.\n\n"
-        "🎁 *¿Sabías que puedes venir primero a una clase de prueba GRATIS?* "
-        "Sin compromiso, sin costo. Es la mejor forma de conocernos.\n\n"
-        "👉 *¿Cuándo podrías venir?* Dime el día (ej: 'este jueves', 'el sábado por la mañana') "
-        "y te confirmo el horario exacto. 🗓️"
-    ),
-    "5": "📍 *Ubicación:* Calle Cañada Strongest N.º 1847 - a pasos de la plaza del estudiante, "
-         "La Paz, Bolivia.\n\n"
-         "📌Mapa: https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc",
-    "6": "¿Qué es Kudo?\n\n"
-         "Kudo es un arte marcial japonés moderno y completo que combina golpes a contacto pleno, "
-         "lanzamientos, controles y técnicas de sumisión en el suelo. Se considera un *Budo* "
-         "contemporáneo con valores educativos, espirituales y de respeto, promoviendo la formación "
-         "del carácter, la superación personal y la cortesía (*Reigi*).\n"
-         "\n"
-         "Fue creado por el maestro *Azuma Takashi* y se practica en más de 50 países. Cada cuatro "
-         "años se celebra un Campeonato Mundial, que reúne a los mejores representantes del mundo.\n"
-         "\n"
-         "Su filosofía se basa en tres conceptos fundamentales:\n"
-         "• *Transitoriedad* (nada es permanente),\n"
-         "• *Interdependencia* (todo está conectado),\n"
-         "• *Mente abierta* (humildad, imparcialidad y aprendizaje continuo).\n\n"
-         "\n"
-         "📹 Videos recomendados:\n"
-         "🎥 Mira este video: https://www.youtube.com/watch?v=NqcE1J7z2eE&\n\n"
-         "🎥 Highlights: https://www.youtube.com/watch?v=JtTWeISoAFA&\n\n"
-         "🎥 Mundial 2023: https://www.youtube.com/watch?v=jfcne0M5qEU",
-    "7": "🥊 *Guantillas para MMA*\n\n"
-         "¡GUANTILLAS PARA MMA, PARA DARLE CALIDAD A TUS ENTRENAMIENTOS!\n"
-         "En venta guantillas para MMA, nuevas. También adecuados para tu práctica de cualquier Arte Marcial y entrenamiento en sacos, pads/manoplas, gobernadoras, wall pad (saco de pared). Perfectas para todas las edades por su diseño ergonómico.\n\n"
-         "💰 *Precios:*\n"
-         "- 1 par: Bs. 90\n"
-         "- 2 pares o más: Bs. 80 cada par.\n\n"
-         "⏰ *Horario de atención para ventas:* Lunes a viernes de 14:00 a 15:30.\n\n"
-         "📍 *Lugar de entrega:* Calle Cañada Strongest 1847 (Ed. Sarawi) – Dojo \"KUDO BOLIVIA\", a media cuadra de la plaza del estudiante."
+    "1": [
+        "👉 *Horarios — Kudo* 🥋\n\n"
+        "📍 *Niños (6 a 13 años)*\n"
+        "• Mar y Jue: 8:30–10:00 y 16:30–18:00\n"
+        "• Sáb: 10:30–12:00\n\n"
+        "📍 *Jóvenes y Adultos*\n"
+        "• Lun y Mié: 8:30–10:00\n"
+        "• Mar y Jue: 19:30–21:00\n"
+        "• Sáb: 9:00–10:30",
+
+        "👉 *Horarios — BJJ y Kick Boxing* 🥋\n\n"
+        "📍 *Brazilian Jiu-Jitsu (Jóvenes y Adultos)*\n"
+        "• Lun, Mié y Vie: 17:00–18:30 y 19:30–21:00\n\n"
+        "📍 *BJJ Kids*\n"
+        "• Lun, Mié y Vie: 18:30–19:30\n\n"
+        "📍 *Kick Boxing*\n"
+        "• Mar y Jue: 7:00–8:30 y 18:00–19:30\n\n"
+        "⛔ BJJ y Kick Boxing no abren sábados ni domingos.",
+
+        CTA_PRUEBA,
+    ],
+    "2": [
+        "👉 *Precios* 💰\n\n"
+        "Bs. *250/mes* por persona (3 clases por semana).\n\n"
+        "¿Prefieres venir 1 día, 2 días o solo sábados? Podemos coordinar una opción a tu medida. 😊",
+        CTA_PRUEBA,
+    ],
+    "3": [
+        "👉 *Disciplinas que ofrecemos* 🥋\n\n"
+        "🥋 *Kudo* — qué es: https://www.youtube.com/watch?v=NqcE1J7z2eE\n"
+        "🥋 *Brazilian Jiu-Jitsu* — qué es: https://www.youtube.com/watch?v=tztK3dJksk0\n"
+        "🥋 *Kick Boxing* — qué es: https://www.youtube.com/watch?v=Sh9cVUidnr0",
+        CTA_PRUEBA,
+    ],
+    "4": [
+        "👉 *¿Cómo inscribirte?* 📝\n\n"
+        "¡Súper fácil! Ven al dojo y te inscribimos en el momento.\n"
+        "📍 Calle Cañada Strongest N.º 1847, a pasos de la plaza del estudiante, La Paz.",
+
+        "🎁 Pero primero puedes venir a una *clase de prueba GRATIS*, sin compromiso. "
+        "Es la mejor forma de conocernos.\n\n"
+        "👉 ¿Qué día podrías venir? Dime el día y te confirmo el horario exacto. 🗓️",
+    ],
+    "5": [
+        "📍 *Ubicación*\n"
+        "Calle Cañada Strongest N.º 1847, a pasos de la plaza del estudiante, La Paz, Bolivia.\n\n"
+        "🗺️ Mapa: https://maps.app.goo.gl/CeW1sAW77AgTzriA6?g_st=ipc",
+        CTA_PRUEBA,
+    ],
+    "6": [
+        "*¿Qué es Kudo?* 🥋\n\n"
+        "Es un arte marcial japonés moderno y completo: combina golpes a contacto pleno, "
+        "lanzamientos, controles y sumisiones en el suelo. Un *Budo* con valores de respeto y "
+        "superación personal, creado por el maestro *Azuma Takashi* y practicado en más de 50 países.",
+
+        "Su filosofía se basa en 3 conceptos:\n"
+        "• *Transitoriedad* — nada es permanente\n"
+        "• *Interdependencia* — todo está conectado\n"
+        "• *Mente abierta* — humildad y aprendizaje\n\n"
+        "📹 Videos:\n"
+        "🎥 ¿Qué es Kudo?: https://www.youtube.com/watch?v=NqcE1J7z2eE\n"
+        "🎥 Highlights: https://www.youtube.com/watch?v=JtTWeISoAFA\n"
+        "🎥 Mundial 2023: https://www.youtube.com/watch?v=jfcne0M5qEU",
+
+        CTA_PRUEBA,
+    ],
+    "7": [
+        "🥊 *Guantillas para MMA*\n\n"
+        "¡Nuevas y de alta calidad! Ideales para MMA, cualquier arte marcial y entrenamiento "
+        "en sacos, pads y manoplas. Diseño ergonómico para todas las edades.\n\n"
+        "💰 1 par: Bs. 90 · 2 o más: Bs. 80 c/u\n"
+        "⏰ Ventas: Lun a Vie, 14:00–15:30\n"
+        "📍 Entrega: Cañada Strongest 1847 (Ed. Sarawi), Dojo \"KUDO BOLIVIA\".",
+        CTA_PRUEBA,
+    ],
 }
 
 # Opciones del menú principal, presentadas como LISTA INTERACTIVA de WhatsApp.
@@ -333,6 +335,21 @@ SYSTEM_PROMPT = (
     "Esta invitación es prioritaria porque el bot se usa en campañas de publicidad y el objetivo "
     "es convertir el interés en una visita al dojo.\n"
     "\n"
+    "✍️ *ESTILO – Mensajes breves para WhatsApp:*\n"
+    "Responde de forma BREVE y fácil de escanear en el celular: idealmente 2 a 4 líneas, máximo "
+    "~60 palabras. Ve directo al grano, usa viñetas si listas varias cosas y evita párrafos largos. "
+    "Si el usuario pide algo extenso (ej: todos los horarios), da primero lo esencial de su "
+    "disciplina o turno de interés y ofrece el resto si lo necesita. Cierra SIEMPRE con la "
+    "invitación breve a la clase de prueba gratuita.\n"
+    "\n"
+    "👤 *PERSONALIZACIÓN:*\n"
+    "Cuando en PERFIL_DEL_PROSPECTO tengas el nombre del usuario, úsalo con naturalidad de vez en "
+    "cuando (no en cada frase ni en todos los mensajes, para no sonar repetitivo ni robótico). "
+    "Aprovecha también la disciplina, el turno y el día de interés que ya conozcas para personalizar "
+    "tanto la respuesta como el CTA. Por ejemplo: 'Perfecto, Juan 🙌 Para *BJJ* en el turno noche "
+    "te esperamos el lunes a las 19:30. ¿Te coordino tu clase de prueba GRATIS?'. Nunca vuelvas a "
+    "pedir un dato que ya figura en el perfil; en su lugar, confírmalo o construye sobre él.\n"
+    "\n"
     "🎯 *EMBUDO DE CALIFICACIÓN (recolección de datos del prospecto):*\n"
     "Además de responder lo que el usuario pregunte, tu segundo objetivo es ir recolectando, de "
     "forma natural y conversacional, estos 4 datos del prospecto, en este orden ideal:\n"
@@ -403,6 +420,31 @@ def send_message(text, phone):
     print(f"[INFO] Respuesta del bot a {phone}: {text}")
     response = requests.post(url, headers=headers, json=payload)
     print("[INFO] WhatsApp API response:", response.status_code, response.text)
+
+
+def send_typing_indicator(message_id):
+    """Marca el mensaje como leído y muestra el indicador de 'escribiendo…' en WhatsApp.
+
+    El indicador se muestra hasta ~25 s o hasta que enviamos una respuesta. Mejora la
+    sensación de conversación humana, sobre todo cuando el agente tarda unos segundos.
+    Requiere el `id` (wamid) del mensaje entrante. Cualquier fallo aquí se ignora para
+    no bloquear nunca la respuesta real al usuario.
+    """
+    if not message_id:
+        return
+    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
+    headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}",
+               "Content-Type": "application/json"}
+    payload = {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": message_id,
+        "typing_indicator": {"type": "text"},
+    }
+    try:
+        requests.post(url, headers=headers, json=payload)
+    except Exception as e:
+        print("[WARN] No se pudo enviar el indicador de escritura:", e)
 
 
 def send_list_menu(phone, body_text=MENU_BODY):
@@ -636,6 +678,7 @@ def webhook():
 
             message = value["messages"][0]
             user_phone = message["from"]
+            message_id = message.get("id")
 
             # Extraer el texto del usuario según el tipo de mensaje:
             #  - "text": mensaje escrito normal.
@@ -659,6 +702,9 @@ def webhook():
 
             if not user_msg:
                 return "ok", 200
+
+            # Mostrar "escribiendo…" (y marcar como leído) antes de procesar la respuesta.
+            send_typing_indicator(message_id)
 
             ahora = time.time()
             limpiar_contextos_expirados(ahora)
@@ -704,7 +750,10 @@ def webhook():
                 if user_phone not in contexto_usuarios:
                     contexto_usuarios[user_phone] = {}
                 contexto_usuarios[user_phone].update({"tema": key, "timestamp": ahora, "last_seen": ahora})
-                send_message(agregar_saludo(respuestas_directas[key], user_phone), user_phone)
+                # Respuestas partidas en mensajes cortos; el saludo va solo en el primero.
+                for i, chunk in enumerate(respuestas_directas[key]):
+                    texto = agregar_saludo(chunk, user_phone) if i == 0 else chunk
+                    send_message(texto, user_phone)
                 send_list_menu(user_phone)
                 return "ok", 200
 
