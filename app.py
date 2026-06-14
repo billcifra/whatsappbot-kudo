@@ -19,22 +19,24 @@ load_dotenv()
 # Inicialización de la app Flask
 app = Flask(__name__)
 
-# ✅ Config memoria (30 minutos)
-TTL_SEGUNDOS = 1800
+# ✅ Config memoria del contexto de conversación.
+# El bot recuerda a cada lead (historial + perfil) por este tiempo de INACTIVIDAD; el
+# reloj se reinicia en cada mensaje. Conversaciones cortas → recordar largo no pesa.
+TTL_SEGUNDOS = 60 * 60 * 24 * 90  # 90 días
 MAX_TURNOS = 20  # 20 turnos (user+assistant). Ajusta si quieres.
 SILENCIO_RE_ENGANCHE = 7200  # 2 horas — umbral para mensaje contextual de retorno
 
 # ---------------------------------------------
 # ✅ Persistencia del contexto de conversación (Redis)
 # ---------------------------------------------
-# El contexto por usuario se guarda en Redis con TTL de 30 min, de modo que el historial
+# El contexto por usuario se guarda en Redis con TTL largo (ver TTL_SEGUNDOS), de modo que el historial
 # y el embudo SOBREVIVEN a reinicios/deploys (antes vivían solo en RAM y se perdían).
 # Si no hay REDIS_URL (p. ej. en local sin Redis) se usa un fallback en memoria — útil
 # para desarrollo, pero ese fallback NO persiste entre reinicios.
 REDIS_URL = os.getenv("REDIS_URL")
-CTX_PREFIX = "ctx:"                  # clave del contexto de conversación (TTL 30 min)
+CTX_PREFIX = "ctx:"                  # clave del contexto de conversación (TTL = TTL_SEGUNDOS)
 BIENVENIDO_PREFIX = "bienvenido:"    # marca de "ya saludado" (TTL largo)
-BIENVENIDO_TTL = 60 * 60 * 24 * 60   # 60 días
+BIENVENIDO_TTL = TTL_SEGUNDOS        # mismo período que el contexto (90 días)
 
 
 class _MemoriaLocal:
@@ -97,7 +99,7 @@ def cargar_contexto(phone):
 
 
 def guardar_contexto(phone, ctx):
-    """Persiste el contexto con TTL de 30 min (renueva la expiración en cada escritura)."""
+    """Persiste el contexto con TTL largo (renueva la expiración en cada escritura)."""
     _backend.setex(CTX_PREFIX + phone, TTL_SEGUNDOS, json.dumps(ctx, ensure_ascii=False))
 
 
@@ -585,11 +587,35 @@ def solicitar_asistencia_humana(user_phone: str, user_message: str) -> str:
     'atención humana', 'hablar con una persona', etc.
     """
     registrar_solicitud_humana(user_phone, user_message)
-    for admin_phone in notificar_humanos:
-        send_message(
-            f"📩 Solicitud de atención humana del número: {user_phone}\nMensaje: {user_message}",
-            admin_phone
+
+    # Enriquecer el aviso al staff con el contexto del prospecto (perfil + últimos mensajes),
+    # para que el equipo retome la conversación sabiendo quién es y qué busca.
+    ctx = cargar_contexto(user_phone) or {}
+    nombre = ctx.get("nombre", "")
+    disciplina = ctx.get("disciplina_raw", "")
+    turno = ctx.get("turno_raw", "")
+    dia = ctx.get("dia_raw", "")
+
+    ultimos = ctx.get("history", [])[-6:]
+    if ultimos:
+        historial_txt = "\n".join(
+            f"  {'Cliente' if it.get('role') == 'user' else 'Bot'}: {it.get('content', '')[:120]}"
+            for it in ultimos
         )
+    else:
+        historial_txt = "  (sin historial)"
+
+    aviso = (
+        "📩 *Solicitud de atención humana*\n"
+        f"👤 Nombre: {nombre or '(desconocido)'}\n"
+        f"📱 Teléfono: {user_phone}\n"
+        f"💬 Chatear: https://wa.me/{user_phone}\n"
+        f"🥋 Interés: {disciplina or '-'} | Turno: {turno or '-'} | Día: {dia or '-'}\n\n"
+        f"✉️ Último mensaje del cliente:\n{user_message}\n\n"
+        f"🧵 Conversación reciente:\n{historial_txt}"
+    )
+    for admin_phone in notificar_humanos:
+        send_message(aviso, admin_phone)
     return "Notificación enviada al equipo humano y solicitud registrada."
 
 
@@ -639,7 +665,7 @@ kudo_agent = Agent(
 
 
 # ---------------------------------------------
-# ✅ Memoria de conversación (30 min) en Redis
+# ✅ Memoria de conversación (TTL largo) en Redis
 # ---------------------------------------------
 def get_or_init_user_context(user_phone: str, ahora: float):
     """Carga el contexto desde Redis (el TTL ya gestiona la expiración: None si caducó);
@@ -701,7 +727,7 @@ def build_agent_input(user_phone: str, user_msg: str, history: list, perfil: dic
             f"TELÉFONO_USUARIO: {user_phone}\n"
             f"{contexto_fechas}"
             f"{perfil_texto}"
-            f"HISTORIAL_30_MIN:\n{historial_texto}\n\n"
+            f"HISTORIAL_CONVERSACION:\n{historial_texto}\n\n"
             f"MENSAJE_ACTUAL_USUARIO: {user_msg}"
         )
     return (
