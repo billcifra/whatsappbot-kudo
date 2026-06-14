@@ -141,9 +141,19 @@ respuestas_directas = {
          "📍 *Lugar de entrega:* Calle Cañada Strongest 1847 (Ed. Sarawi) – Dojo \"KUDO BOLIVIA\", a media cuadra de la plaza del estudiante."
 }
 
-# Menú adicional que se agrega al final de cada mensaje
-menu = ("\n\n📋 ¿Sobre qué más te gustaría saber?\n"
-        "1️⃣ Horarios\n2️⃣ Precios\n3️⃣ Disciplinas\n4️⃣ Inscripción\n5️⃣ Ubicación\n6️⃣ ¿Qué es Kudo?\n7️⃣ Venta de Guantes")
+# Opciones del menú principal, presentadas como LISTA INTERACTIVA de WhatsApp.
+# El `id` de cada fila coincide con la clave de `respuestas_directas`, de modo que
+# tocar una opción produce exactamente el mismo efecto que escribir el número (1-7).
+MENU_ROWS = [
+    {"id": "1", "title": "Horarios", "description": "Días y horas por disciplina"},
+    {"id": "2", "title": "Precios", "description": "Mensualidad y opciones"},
+    {"id": "3", "title": "Disciplinas", "description": "Kudo, BJJ y Kick Boxing"},
+    {"id": "4", "title": "Inscripción", "description": "Cómo empezar + clase gratis"},
+    {"id": "5", "title": "Ubicación", "description": "Dónde estamos"},
+    {"id": "6", "title": "¿Qué es Kudo?", "description": "Conoce el arte marcial"},
+    {"id": "7", "title": "Venta de Guantes", "description": "Guantillas de MMA en venta"},
+]
+MENU_BODY = "📋 ¿Sobre qué te gustaría saber? Toca una opción 👇"
 
 # Mensajes de conversión para leads de publicidad
 BIENVENIDA = (
@@ -291,14 +301,12 @@ SYSTEM_PROMPT = (
     "del instructor y una breve descripción basada en la lista proporcionada. Si no hay información "
     "suficiente, invita cordialmente a conocer al equipo en el dojo. "
     "📝 Si alguien pregunta por temas como horarios, precios, inscripción o ubicación, ofrece la "
-    "respuesta seguida siempre de este menú de opciones:\n"
-    "1️⃣ Horarios\n"
-    "2️⃣ Precios\n"
-    "3️⃣ Disciplinas\n"
-    "4️⃣ Inscripción\n"
-    "5️⃣ Ubicación\n"
-    "6️⃣ ¿Qué es Kudo?\n"
-    "7️⃣ Venta de Guantes\n"
+    "respuesta y, cuando quieras mostrar el menú de opciones, NO escribas la lista numerada. "
+    "En su lugar, termina tu mensaje con el token especial [[MENU]] en una línea aparte: el sistema "
+    "mostrará automáticamente un menú con botones que el usuario puede tocar (Horarios, Precios, "
+    "Disciplinas, Inscripción, Ubicación, ¿Qué es Kudo?, Venta de Guantes). Usa [[MENU]] cuando "
+    "ofrezcas opciones, pero NO lo uses si estás en medio del embudo haciendo una pregunta concreta "
+    "(por ejemplo pidiendo el nombre, la disciplina, el turno o el día).\n"
     "\n"
     "📌 Siempre responde en español neutro, con cortesía y como si formaras parte del equipo de "
     "*KUDO Bolivia*. Si no conoces la respuesta exacta, invita amablemente a visitar el dojo para "
@@ -313,7 +321,7 @@ SYSTEM_PROMPT = (
     "lugar, salúdalo cordialmente por su nombre, dale la bienvenida a KUDO Bolivia, invítalo a su "
     "clase de prueba gratuita y ofrécele el menú de opciones para orientarlo. "
     "Ejemplo: '¡Mucho gusto, Augusto! 👋 Bienvenido a KUDO Bolivia. ¿Sobre qué tema te gustaría "
-    "información? Recuerda que tu primera clase es GRATIS. ' seguido del menú.\n"
+    "información? Recuerda que tu primera clase es GRATIS.' y termina el mensaje con [[MENU]].\n"
     "🔁 Cuando el usuario solicite la opción 3 (*Disciplinas*), sola o combinada con otras, debes "
     "incluir también los enlaces de video explicativo de *Kudo* y *BJJ* en tu respuesta.\n"
     "\n"
@@ -393,6 +401,36 @@ def send_message(text, phone):
                "text": {"body": text}
                }
     print(f"[INFO] Respuesta del bot a {phone}: {text}")
+    response = requests.post(url, headers=headers, json=payload)
+    print("[INFO] WhatsApp API response:", response.status_code, response.text)
+
+
+def send_list_menu(phone, body_text=MENU_BODY):
+    """Envía el menú principal como lista interactiva (opciones que el usuario toca).
+
+    Reemplaza al antiguo menú de texto ('escribe 1-7'): WhatsApp muestra un botón
+    'Ver opciones' que despliega las 7 opciones; al tocar una, Meta nos reenvía el
+    `id` de la fila, que el webhook trata igual que si el usuario hubiera escrito el número.
+    """
+    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
+    headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}",
+               "Content-Type": "application/json"}
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone,
+        "type": "interactive",
+        "interactive": {
+            "type": "list",
+            "header": {"type": "text", "text": "KUDO Bolivia 🥋"},
+            "body": {"text": body_text},
+            "footer": {"text": "Tu primera clase es GRATIS 🎁"},
+            "action": {
+                "button": "Ver opciones",
+                "sections": [{"title": "Información", "rows": MENU_ROWS}],
+            },
+        },
+    }
+    print(f"[INFO] Menú interactivo enviado a {phone}")
     response = requests.post(url, headers=headers, json=payload)
     print("[INFO] WhatsApp API response:", response.status_code, response.text)
 
@@ -597,8 +635,31 @@ def webhook():
                 return "ok", 200
 
             message = value["messages"][0]
-            user_msg = message["text"]["body"]
             user_phone = message["from"]
+
+            # Extraer el texto del usuario según el tipo de mensaje:
+            #  - "text": mensaje escrito normal.
+            #  - "interactive": el usuario tocó una opción del menú (lista o botón);
+            #    usamos el `id` de la opción, que coincide con las claves 1-7.
+            msg_type = message.get("type", "text")
+            if msg_type == "text":
+                user_msg = message["text"]["body"]
+            elif msg_type == "interactive":
+                interactive = message.get("interactive", {})
+                if interactive.get("type") == "list_reply":
+                    user_msg = interactive.get("list_reply", {}).get("id", "")
+                elif interactive.get("type") == "button_reply":
+                    user_msg = interactive.get("button_reply", {}).get("id", "")
+                else:
+                    user_msg = ""
+            else:
+                # Tipos aún no soportados (imagen, audio, etc.): se ignoran sin romper.
+                print(f"[INFO] Tipo de mensaje no soportado: {msg_type}")
+                return "ok", 200
+
+            if not user_msg:
+                return "ok", 200
+
             ahora = time.time()
             limpiar_contextos_expirados(ahora)
 
@@ -643,7 +704,8 @@ def webhook():
                 if user_phone not in contexto_usuarios:
                     contexto_usuarios[user_phone] = {}
                 contexto_usuarios[user_phone].update({"tema": key, "timestamp": ahora, "last_seen": ahora})
-                send_message(agregar_saludo(respuestas_directas[key], user_phone) + menu, user_phone)
+                send_message(agregar_saludo(respuestas_directas[key], user_phone), user_phone)
+                send_list_menu(user_phone)
                 return "ok", 200
 
             # ---TODO LO DEMÁS VA AL AGENTE IA con historial y perfil del prospecto ---
@@ -653,6 +715,10 @@ def webhook():
             agent_input = build_agent_input(user_phone, user_msg, ctx["history"], perfil=ctx)
             result = Runner.run_sync(kudo_agent, agent_input)
             texto = getattr(result, "final_output", None) or getattr(result, "output", None) or str(result)
+
+            # El agente puede pedir que mostremos el menú interactivo terminando con [[MENU]].
+            mostrar_menu = "[[MENU]]" in texto
+            texto = texto.replace("[[MENU]]", "").strip()
 
             append_to_history(ctx, "assistant", texto)
             contexto_usuarios[user_phone]["tema"] = "libre"
@@ -666,6 +732,8 @@ def webhook():
                 turno=ctx.get("turno_raw", ""),
             )
             send_message(texto, user_phone)
+            if mostrar_menu:
+                send_list_menu(user_phone)
 
     except Exception as e:
         print("Error:", e)
