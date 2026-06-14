@@ -19,14 +19,95 @@ load_dotenv()
 # Inicialización de la app Flask
 app = Flask(__name__)
 
-# Diccionario para almacenar contexto por usuario (tema y tiempo)
-contexto_usuarios = {}
-usuarios_bienvenidos = set()  # phones que ya recibieron el mensaje de bienvenida
-
 # ✅ Config memoria (30 minutos)
 TTL_SEGUNDOS = 1800
 MAX_TURNOS = 20  # 20 turnos (user+assistant). Ajusta si quieres.
 SILENCIO_RE_ENGANCHE = 7200  # 2 horas — umbral para mensaje contextual de retorno
+
+# ---------------------------------------------
+# ✅ Persistencia del contexto de conversación (Redis)
+# ---------------------------------------------
+# El contexto por usuario se guarda en Redis con TTL de 30 min, de modo que el historial
+# y el embudo SOBREVIVEN a reinicios/deploys (antes vivían solo en RAM y se perdían).
+# Si no hay REDIS_URL (p. ej. en local sin Redis) se usa un fallback en memoria — útil
+# para desarrollo, pero ese fallback NO persiste entre reinicios.
+REDIS_URL = os.getenv("REDIS_URL")
+CTX_PREFIX = "ctx:"                  # clave del contexto de conversación (TTL 30 min)
+BIENVENIDO_PREFIX = "bienvenido:"    # marca de "ya saludado" (TTL largo)
+BIENVENIDO_TTL = 60 * 60 * 24 * 60   # 60 días
+
+
+class _MemoriaLocal:
+    """Fallback en RAM con la interfaz mínima de redis-py (solo desarrollo local)."""
+    def __init__(self):
+        self._store = {}  # key -> (expira_epoch | None, valor)
+
+    def get(self, key):
+        item = self._store.get(key)
+        if not item:
+            return None
+        expira, valor = item
+        if expira is not None and time.time() > expira:
+            self._store.pop(key, None)
+            return None
+        return valor
+
+    def setex(self, key, ttl, valor):
+        self._store[key] = (time.time() + ttl, valor)
+
+    def delete(self, key):
+        self._store.pop(key, None)
+
+    def keys(self, pattern):
+        prefijo = pattern[:-1] if pattern.endswith("*") else pattern
+        return [k for k in list(self._store) if k.startswith(prefijo) and self.get(k) is not None]
+
+
+def _conectar_backend():
+    """Conecta a Redis si hay REDIS_URL; si falla o no está, cae a memoria local."""
+    if REDIS_URL:
+        try:
+            import redis
+            kwargs = {"decode_responses": True}
+            if REDIS_URL.startswith("rediss://"):
+                kwargs["ssl_cert_reqs"] = None  # Heroku Redis: TLS con cert autofirmado
+            cliente = redis.from_url(REDIS_URL, **kwargs)
+            cliente.ping()
+            print("[INFO] Persistencia: Redis conectado.")
+            return cliente
+        except Exception as e:
+            print("[ERROR] No se pudo conectar a Redis; usando memoria local:", e)
+            return _MemoriaLocal()
+    print("[WARN] REDIS_URL no definido — usando memoria local (NO persiste reinicios).")
+    return _MemoriaLocal()
+
+
+_backend = _conectar_backend()
+
+
+def cargar_contexto(phone):
+    """Devuelve el contexto del usuario desde el backend (o None si no existe/expiró)."""
+    raw = _backend.get(CTX_PREFIX + phone)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+
+
+def guardar_contexto(phone, ctx):
+    """Persiste el contexto con TTL de 30 min (renueva la expiración en cada escritura)."""
+    _backend.setex(CTX_PREFIX + phone, TTL_SEGUNDOS, json.dumps(ctx, ensure_ascii=False))
+
+
+def marcar_bienvenido(phone):
+    """Marca (con TTL largo) que el usuario ya recibió la bienvenida, para no repetirla."""
+    _backend.setex(BIENVENIDO_PREFIX + phone, BIENVENIDO_TTL, "1")
+
+
+def ya_bienvenido(phone):
+    return bool(_backend.get(BIENVENIDO_PREFIX + phone))
 
 # ---------------------------------------------
 # 📅 Feriados / días SIN clases de prueba
@@ -489,15 +570,8 @@ def registrar_solicitud_humana(phone, message):
 
 def agregar_saludo(texto, phone):
     """Antepone el nombre del usuario si está disponible en el contexto."""
-    nombre = contexto_usuarios.get(phone, {}).get("nombre")
+    nombre = (cargar_contexto(phone) or {}).get("nombre")
     return f"¡Hola, {nombre}! 😊\n\n{texto}" if nombre else texto
-
-
-def limpiar_contextos_expirados(ahora):
-    """Borra de contexto_usuarios todos los usuarios cuyo last_seen expiró (30 min)."""
-    for phone, ctx in list(contexto_usuarios.items()):
-        if ahora - ctx.get("last_seen", 0) > TTL_SEGUNDOS:
-            del contexto_usuarios[phone]
 
 
 # ---------------------------------------------
@@ -532,7 +606,7 @@ def guardar_datos_prospecto(user_phone: str, nombre: str = "", disciplina: str =
     Puedes llamarla varias veces a medida que obtienes más datos; envía siempre todos los
     que tengas hasta el momento (los que aún no conozcas déjalos vacíos).
     """
-    ctx = contexto_usuarios.setdefault(user_phone, {})
+    ctx = cargar_contexto(user_phone) or {}
     if nombre:
         ctx["nombre"] = nombre
     if disciplina:
@@ -541,7 +615,9 @@ def guardar_datos_prospecto(user_phone: str, nombre: str = "", disciplina: str =
         ctx["turno_raw"] = turno
     if dia:
         ctx["dia_raw"] = dia
+    ctx.setdefault("history", [])
     ctx["last_seen"] = time.time()
+    guardar_contexto(user_phone, ctx)
     registrar_interesado(
         user_phone,
         "[DATOS PROSPECTO]",
@@ -563,16 +639,15 @@ kudo_agent = Agent(
 
 
 # ---------------------------------------------
-# ✅ Memoria de conversación (30 min) en RAM
+# ✅ Memoria de conversación (30 min) en Redis
 # ---------------------------------------------
 def get_or_init_user_context(user_phone: str, ahora: float):
-    ctx = contexto_usuarios.get(user_phone)
-    if ctx and (ahora - ctx.get("last_seen", 0) > TTL_SEGUNDOS):
-        ctx = None
+    """Carga el contexto desde Redis (el TTL ya gestiona la expiración: None si caducó);
+    si no existe, devuelve uno nuevo. NO persiste: el llamador guarda tras modificarlo."""
+    ctx = cargar_contexto(user_phone)
     if not ctx:
         ctx = {"last_seen": ahora, "history": [], "etapa_calificacion": 99}
-        contexto_usuarios[user_phone] = ctx
-    # Contextos creados por los routers directos/keyword pueden no tener "history"
+    # Contextos creados por los routers directos pueden no tener "history"
     ctx.setdefault("history", [])
     ctx["last_seen"] = ahora
     return ctx
@@ -647,7 +722,13 @@ def debug_contexto():
     token = request.args.get("token", "")
     if not DEBUG_TOKEN or token != DEBUG_TOKEN:
         return {"error": "unauthorized"}, 401
-    return {"contexto_usuarios": contexto_usuarios}, 200
+    data = {}
+    for key in _backend.keys(CTX_PREFIX + "*"):
+        phone = key[len(CTX_PREFIX):]
+        ctx = cargar_contexto(phone)
+        if ctx is not None:
+            data[phone] = ctx
+    return {"contexto_usuarios": data}, 200
 
 
 @app.route("/webhook", methods=["GET"])
@@ -707,7 +788,6 @@ def webhook():
             send_typing_indicator(message_id)
 
             ahora = time.time()
-            limpiar_contextos_expirados(ahora)
 
             print(f"[INFO] Mensaje recibido: {user_msg} de {user_phone}")
 
@@ -715,20 +795,19 @@ def webhook():
             # El saludo inicial es determinístico (gratis e instantáneo). A partir de la
             # siguiente respuesta, el agente conduce el embudo de calificación. Sembramos la
             # bienvenida en el historial para que el agente sepa que ya saludó y pidió el nombre.
-            es_nuevo = (user_phone not in usuarios_bienvenidos and
-                        user_phone not in contexto_usuarios)
+            es_nuevo = not ya_bienvenido(user_phone) and cargar_contexto(user_phone) is None
             if es_nuevo:
-                usuarios_bienvenidos.add(user_phone)
+                marcar_bienvenido(user_phone)
                 registrar_interesado(user_phone, f"[NUEVO USUARIO] {user_msg}")
-                contexto_usuarios[user_phone] = {
+                guardar_contexto(user_phone, {
                     "last_seen": ahora, "timestamp": ahora,
                     "history": [{"role": "assistant", "content": BIENVENIDA}], "tema": "nuevo",
-                }
+                })
                 send_message(BIENVENIDA, user_phone)
                 return "ok", 200
 
             # --- MENSAJE CONTEXTUAL SI HUBO SILENCIO LARGO (>2h con perfil incompleto) ---
-            ctx_existente = contexto_usuarios.get(user_phone, {})
+            ctx_existente = cargar_contexto(user_phone) or {}
             ultimo_contacto = ctx_existente.get("last_seen", ahora)
             perfil_completo = all(
                 ctx_existente.get(k) for k in ("nombre", "disciplina_raw", "turno_raw", "dia_raw")
@@ -743,13 +822,15 @@ def webhook():
                     user_phone
                 )
                 ctx_existente["last_seen"] = ahora
+                guardar_contexto(user_phone, ctx_existente)
 
             # --- ROUTER DE OPCIONES DIRECTAS (número 1-7) ---
             if user_msg.strip() in respuestas_directas:
                 key = user_msg.strip()
-                if user_phone not in contexto_usuarios:
-                    contexto_usuarios[user_phone] = {}
-                contexto_usuarios[user_phone].update({"tema": key, "timestamp": ahora, "last_seen": ahora})
+                ctx = cargar_contexto(user_phone) or {}
+                ctx.setdefault("history", [])
+                ctx.update({"tema": key, "timestamp": ahora, "last_seen": ahora})
+                guardar_contexto(user_phone, ctx)
                 # Respuestas partidas en mensajes cortos; el saludo va solo en el primero.
                 for i, chunk in enumerate(respuestas_directas[key]):
                     texto = agregar_saludo(chunk, user_phone) if i == 0 else chunk
@@ -760,6 +841,9 @@ def webhook():
             # ---TODO LO DEMÁS VA AL AGENTE IA con historial y perfil del prospecto ---
             ctx = get_or_init_user_context(user_phone, ahora)
             append_to_history(ctx, "user", user_msg)
+            # Persistir el mensaje del usuario ANTES de correr el agente: la tool
+            # guardar_datos_prospecto lee y escribe este mismo contexto en Redis.
+            guardar_contexto(user_phone, ctx)
 
             agent_input = build_agent_input(user_phone, user_msg, ctx["history"], perfil=ctx)
             result = Runner.run_sync(kudo_agent, agent_input)
@@ -769,9 +853,14 @@ def webhook():
             mostrar_menu = "[[MENU]]" in texto
             texto = texto.replace("[[MENU]]", "").strip()
 
+            # Recargar: durante su ejecución el agente pudo guardar datos del prospecto
+            # (nombre/disciplina/turno/día) en el contexto; recargamos para no pisarlos.
+            ctx = cargar_contexto(user_phone) or ctx
             append_to_history(ctx, "assistant", texto)
-            contexto_usuarios[user_phone]["tema"] = "libre"
-            contexto_usuarios[user_phone]["timestamp"] = ahora
+            ctx["tema"] = "libre"
+            ctx["timestamp"] = ahora
+            ctx["last_seen"] = ahora
+            guardar_contexto(user_phone, ctx)
 
             registrar_interesado(
                 user_phone,
