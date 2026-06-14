@@ -560,6 +560,58 @@ def send_list_menu(phone, body_text=MENU_BODY):
     print("[INFO] WhatsApp API response:", response.status_code, response.text)
 
 
+# Cliente OpenAI para transcripción de notas de voz (el agente usa su propio SDK aparte).
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+def descargar_media_whatsapp(media_id):
+    """Descarga el binario de un media (audio/imagen) de WhatsApp.
+
+    WhatsApp entrega media en 2 pasos: el endpoint del media_id devuelve una URL temporal,
+    y esa URL se descarga con el mismo bearer token. Devuelve (bytes, mime) o (None, None).
+    """
+    if not media_id:
+        return None, None
+    headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
+    try:
+        meta = requests.get(f"https://graph.facebook.com/v18.0/{media_id}", headers=headers)
+        if meta.status_code != 200:
+            print("[WARN] Metadata de media falló:", meta.status_code, meta.text)
+            return None, None
+        url = meta.json().get("url")
+        if not url:
+            return None, None
+        binario = requests.get(url, headers=headers)
+        if binario.status_code != 200:
+            print("[WARN] Descarga de media falló:", binario.status_code)
+            return None, None
+        return binario.content, meta.json().get("mime_type", "")
+    except Exception as e:
+        print("[ERROR] Error descargando media:", e)
+        return None, None
+
+
+def transcribir_audio_whatsapp(audio_id):
+    """Descarga y transcribe una nota de voz de WhatsApp con Whisper. Devuelve texto o ""."""
+    audio_bytes, mime = descargar_media_whatsapp(audio_id)
+    if not audio_bytes:
+        return ""
+    ext = "ogg"  # WhatsApp envía las notas de voz como audio/ogg (opus)
+    if "mp4" in mime or "m4a" in mime:
+        ext = "m4a"
+    elif "mpeg" in mime or "mp3" in mime:
+        ext = "mp3"
+    try:
+        resultado = openai_client.audio.transcriptions.create(
+            model="whisper-1",
+            file=(f"audio.{ext}", audio_bytes),
+        )
+        return (getattr(resultado, "text", "") or "").strip()
+    except Exception as e:
+        print("[ERROR] Falló la transcripción de audio:", e)
+        return ""
+
+
 def registrar_interesado(phone, message, nombre="", disciplina="", turno="", dia=""):
     fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     interesados_sheet.append_row([phone, message, fecha, nombre, disciplina, turno, dia])
@@ -787,10 +839,15 @@ def webhook():
             user_phone = message["from"]
             message_id = message.get("id")
 
+            # Mostrar "escribiendo…" (y marcar como leído) cuanto antes — también cubre
+            # el tiempo que tarda la transcripción de una nota de voz.
+            send_typing_indicator(message_id)
+
             # Extraer el texto del usuario según el tipo de mensaje:
             #  - "text": mensaje escrito normal.
-            #  - "interactive": el usuario tocó una opción del menú (lista o botón);
-            #    usamos el `id` de la opción, que coincide con las claves 1-7.
+            #  - "interactive": el usuario tocó una opción del menú (lista o botón).
+            #  - "audio": nota de voz → se descarga y transcribe con Whisper.
+            #  - otros (imagen, documento, sticker…): respuesta amable, no se ignoran en silencio.
             msg_type = message.get("type", "text")
             if msg_type == "text":
                 user_msg = message["text"]["body"]
@@ -802,16 +859,27 @@ def webhook():
                     user_msg = interactive.get("button_reply", {}).get("id", "")
                 else:
                     user_msg = ""
+            elif msg_type == "audio":
+                user_msg = transcribir_audio_whatsapp(message.get("audio", {}).get("id"))
+                if not user_msg:
+                    send_message(
+                        "🎙️ Recibí tu audio pero no logré entenderlo bien. "
+                        "¿Me lo puedes escribir en un mensajito? 😊",
+                        user_phone,
+                    )
+                    return "ok", 200
+                print(f"[INFO] Nota de voz transcrita de {user_phone}: {user_msg}")
             else:
-                # Tipos aún no soportados (imagen, audio, etc.): se ignoran sin romper.
-                print(f"[INFO] Tipo de mensaje no soportado: {msg_type}")
+                # Imagen, documento, sticker, ubicación, etc.: aún no los procesamos.
+                send_message(
+                    "Por ahora puedo leer *texto* y escuchar *notas de voz* 🎙️. "
+                    "Cuéntame por aquí en qué te puedo ayudar 😊",
+                    user_phone,
+                )
                 return "ok", 200
 
             if not user_msg:
                 return "ok", 200
-
-            # Mostrar "escribiendo…" (y marcar como leído) antes de procesar la respuesta.
-            send_typing_indicator(message_id)
 
             ahora = time.time()
 
