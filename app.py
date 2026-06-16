@@ -489,8 +489,59 @@ SYSTEM_PROMPT = (
 # Funciones auxiliares
 # ---------------------------------------------
 
+# Reintentos: la red y las APIs externas (WhatsApp, Google Sheets) fallan de forma
+# transitoria. En vez de perder el mensaje, reintentamos con backoff exponencial.
+HTTP_TIMEOUT = 20                       # segundos máx. por llamada HTTP (evita cuelgues)
+REINTENTOS = 3                          # nº total de intentos
+ESPERA_BASE = 1.0                       # backoff: 1s, 2s, 4s…
+STATUS_REINTENTABLES = {429, 500, 502, 503, 504}  # respuestas que vale la pena reintentar
+
+
+def _http_con_reintentos(descripcion, metodo, url, **kwargs):
+    """HTTP con reintentos y backoff ante fallos de red o respuestas 5xx/429.
+
+    Devuelve la respuesta (incluso si es un error no reintentable, p. ej. 4xx) o
+    None si tras agotar los intentos no se obtuvo respuesta. Nunca lanza excepción:
+    el llamador decide qué hacer, pero el flujo del webhook nunca se rompe por esto.
+    """
+    kwargs.setdefault("timeout", HTTP_TIMEOUT)
+    for intento in range(1, REINTENTOS + 1):
+        try:
+            resp = requests.request(metodo, url, **kwargs)
+        except requests.RequestException as e:
+            if intento == REINTENTOS:
+                print(f"[ERROR] {descripcion}: agotados {REINTENTOS} intentos (red): {e}")
+                return None
+            espera = ESPERA_BASE * (2 ** (intento - 1))
+            print(f"[WARN] {descripcion}: intento {intento} falló (red: {e}); reintento en {espera:.1f}s")
+            time.sleep(espera)
+            continue
+        if resp.status_code in STATUS_REINTENTABLES and intento < REINTENTOS:
+            espera = ESPERA_BASE * (2 ** (intento - 1))
+            print(f"[WARN] {descripcion}: intento {intento} devolvió {resp.status_code}; reintento en {espera:.1f}s")
+            time.sleep(espera)
+            continue
+        return resp
+    return None
+
+
+def _con_reintentos(descripcion, fn):
+    """Ejecuta fn() reintentando con backoff ante cualquier excepción transitoria
+    (p. ej. errores de red de Google Sheets). Devuelve el resultado o None si falla."""
+    for intento in range(1, REINTENTOS + 1):
+        try:
+            return fn()
+        except Exception as e:
+            if intento == REINTENTOS:
+                print(f"[ERROR] {descripcion}: agotados {REINTENTOS} intentos: {e}")
+                return None
+            espera = ESPERA_BASE * (2 ** (intento - 1))
+            print(f"[WARN] {descripcion}: intento {intento} falló ({e}); reintento en {espera:.1f}s")
+            time.sleep(espera)
+
+
 def send_message(text, phone):
-    """Envía un mensaje de texto por la API de WhatsApp"""
+    """Envía un mensaje de texto por la API de WhatsApp (con reintentos ante fallos)."""
     url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}",
                "Content-Type": "application/json"
@@ -501,7 +552,10 @@ def send_message(text, phone):
                "text": {"body": text}
                }
     print(f"[INFO] Respuesta del bot a {phone}: {text}")
-    response = requests.post(url, headers=headers, json=payload)
+    response = _http_con_reintentos("Envío WhatsApp", "POST", url, headers=headers, json=payload)
+    if response is None:
+        print(f"[ERROR] No se pudo enviar el mensaje a {phone} tras {REINTENTOS} intentos.")
+        return
     print("[INFO] WhatsApp API response:", response.status_code, response.text)
 
 
@@ -556,7 +610,10 @@ def send_list_menu(phone, body_text=MENU_BODY):
         },
     }
     print(f"[INFO] Menú interactivo enviado a {phone}")
-    response = requests.post(url, headers=headers, json=payload)
+    response = _http_con_reintentos("Menú WhatsApp", "POST", url, headers=headers, json=payload)
+    if response is None:
+        print(f"[ERROR] No se pudo enviar el menú a {phone} tras {REINTENTOS} intentos.")
+        return
     print("[INFO] WhatsApp API response:", response.status_code, response.text)
 
 
@@ -574,16 +631,17 @@ def descargar_media_whatsapp(media_id):
         return None, None
     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
     try:
-        meta = requests.get(f"https://graph.facebook.com/v18.0/{media_id}", headers=headers)
-        if meta.status_code != 200:
-            print("[WARN] Metadata de media falló:", meta.status_code, meta.text)
+        meta = _http_con_reintentos(
+            "Metadata de media", "GET", f"https://graph.facebook.com/v18.0/{media_id}", headers=headers)
+        if meta is None or meta.status_code != 200:
+            print("[WARN] Metadata de media falló:", getattr(meta, "status_code", "sin respuesta"))
             return None, None
         url = meta.json().get("url")
         if not url:
             return None, None
-        binario = requests.get(url, headers=headers)
-        if binario.status_code != 200:
-            print("[WARN] Descarga de media falló:", binario.status_code)
+        binario = _http_con_reintentos("Descarga de media", "GET", url, headers=headers)
+        if binario is None or binario.status_code != 200:
+            print("[WARN] Descarga de media falló:", getattr(binario, "status_code", "sin respuesta"))
             return None, None
         return binario.content, meta.json().get("mime_type", "")
     except Exception as e:
@@ -614,12 +672,18 @@ def transcribir_audio_whatsapp(audio_id):
 
 def registrar_interesado(phone, message, nombre="", disciplina="", turno="", dia=""):
     fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    interesados_sheet.append_row([phone, message, fecha, nombre, disciplina, turno, dia])
+    _con_reintentos(
+        "Registro en hoja Interesados",
+        lambda: interesados_sheet.append_row([phone, message, fecha, nombre, disciplina, turno, dia]),
+    )
 
 
 def registrar_solicitud_humana(phone, message):
     fecha = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    solicitudes_sheet.append_row([phone, message, fecha])
+    _con_reintentos(
+        "Registro en hoja SolicitudesHumano",
+        lambda: solicitudes_sheet.append_row([phone, message, fecha]),
+    )
 
 
 def agregar_saludo(texto, phone):
