@@ -120,6 +120,7 @@ def ya_bienvenido(phone):
 FERIADOS = {
     "2026-06-04": "Feriado (jueves) — sin clases",
     "2026-06-05": "Feriado (viernes) — sin clases",
+    "2026-06-22": "Feriado (lunes) — sin clases",
 }
 
 # Cargar credenciales desde variables de entorno
