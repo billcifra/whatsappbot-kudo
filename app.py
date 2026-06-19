@@ -165,9 +165,11 @@ respuestas_directas = {
         "• Lun, Mié y Vie: 17:00–18:30 y 19:30–21:00\n\n"
         "📍 *BJJ Kids*\n"
         "• Lun, Mié y Vie: 18:30–19:30\n\n"
-        "📍 *Kick Boxing*\n"
-        "• Mar y Jue: 7:00–8:30 y 18:00–19:30\n\n"
-        "⛔ BJJ y Kick Boxing no abren sábados ni domingos.",
+        "🔄 *Kick Boxing — en reapertura*\n"
+        "Estamos formando el nuevo grupo y abriremos horario en cuanto tengamos cupo suficiente. "
+        "¿Te anoto para avisarte apenas se habilite? 📲\n"
+        "Mientras tanto, ¡te invitamos a una *clase de prueba GRATIS* de Kudo o BJJ para que conozcas el dojo! 🥋\n\n"
+        "⛔ BJJ no abre sábados ni domingos.",
 
         CTA_PRUEBA,
     ],
@@ -181,7 +183,7 @@ respuestas_directas = {
         "👉 *Disciplinas que ofrecemos* 🥋\n\n"
         "🥋 *Kudo* — qué es: https://www.youtube.com/watch?v=NqcE1J7z2eE\n"
         "🥋 *Brazilian Jiu-Jitsu* — qué es: https://www.youtube.com/watch?v=tztK3dJksk0\n"
-        "🥋 *Kick Boxing* — qué es: https://www.youtube.com/watch?v=Sh9cVUidnr0",
+        "🥋 *Kick Boxing* *(en reapertura)* — qué es: https://www.youtube.com/watch?v=Sh9cVUidnr0",
         CTA_PRUEBA,
     ],
     "4": [
@@ -233,7 +235,7 @@ respuestas_directas = {
 MENU_ROWS = [
     {"id": "1", "title": "Horarios", "description": "Días y horas por disciplina"},
     {"id": "2", "title": "Precios", "description": "Mensualidad y opciones"},
-    {"id": "3", "title": "Disciplinas", "description": "Kudo, BJJ y Kick Boxing"},
+    {"id": "3", "title": "Disciplinas", "description": "Kudo, BJJ y Kick Boxing (próx.)"},
     {"id": "4", "title": "Inscripción", "description": "Cómo empezar + clase gratis"},
     {"id": "5", "title": "Ubicación", "description": "Dónde estamos"},
     {"id": "6", "title": "¿Qué es Kudo?", "description": "Conoce el arte marcial"},
@@ -244,7 +246,7 @@ MENU_BODY = "📋 ¿Sobre qué te gustaría saber? Toca una opción 👇"
 # Mensajes de conversión para leads de publicidad
 BIENVENIDA = (
     "¡Hola! 👋 Bienvenido/a a *KUDO Bolivia*, tu centro de artes marciales en La Paz.\n\n"
-    "🥋 Entrenamos *Kudo*, *Brazilian Jiu-Jitsu*, *Kick Boxing* y *Defensa Personal*.\n"
+    "🥋 Entrenamos *Kudo*, *Brazilian Jiu-Jitsu* y *Defensa Personal* (Kick Boxing próximamente).\n"
     "🎁 *¡Tu primera clase es completamente GRATIS!* Sin compromiso.\n\n"
     "Para ayudarte mejor, ¿cómo te llamas? 😊"
 )
@@ -330,16 +332,20 @@ SYSTEM_PROMPT = (
     "     • Lunes, Miércoles y Viernes: 18:30–19:30\n"
     "     ⛔ Brazilian Jiu-Jitsu Kids NO tiene clases los sábados ni domingos.\n"
     "\n"
-    "📍 *Kick Boxing*\n"
-    "   🕗 *Turno mañana:*\n"
-    "     • Martes y Jueves: 7:00–8:30\n"
-    "   🌙 *Turno noche:*\n"
-    "     • Martes y Jueves: 18:00–19:30\n"
-    "     ⛔ Kick Boxing NO tiene clases los sábados ni domingos.\n"
+    "📍 *Kick Boxing — EN REAPERTURA (sin horario activo por ahora)*\n"
+    "   Kick Boxing cerró temporalmente y está en proceso de reapertura. Actualmente NO tiene "
+    "instructor ni horarios disponibles. Si alguien pregunta por Kick Boxing: explícalo con "
+    "honestidad y tono positivo, indícale que estamos formando el nuevo grupo, y OFRÉCELE "
+    "anotarse en la lista de espera para avisarle apenas se habilite. Pide y registra su nombre, "
+    "turno y día que le quedarían (con `guardar_datos_prospecto`) para medir el interés. NUNCA "
+    "des un horario de Kick Boxing ni lo ofrezcas como clase de prueba inmediata. En el mismo "
+    "mensaje, invítalo a aprovechar una *clase de prueba GRATIS* de Kudo o BJJ mientras tanto, "
+    "para que conozca el dojo.\n"
     "\n"
     "🔔 *Resumen de SÁBADOS:* las ÚNICAS disciplinas con clases los sábados son "
     "Kudo Niños (10:30–12:00) y Kudo Jóvenes y Adultos (9:00–10:30). "
-    "Brazilian Jiu-Jitsu (Adultos y Kids) y Kick Boxing NO abren los sábados.\n"
+    "Brazilian Jiu-Jitsu (Adultos y Kids) NO abre los sábados. "
+    "Kick Boxing está en reapertura y por ahora no tiene clases ningún día.\n"
     "\n"
     "💰 *Precios:* Bs. 250 mensual por persona (3 clases por semana). "
     "Si alguien prefiere asistir solo un día, dos días o únicamente los sábados, "
@@ -439,7 +445,9 @@ SYSTEM_PROMPT = (
     "forma natural y conversacional, estos 4 datos del prospecto, en este orden ideal:\n"
     "  1. *Nombre* (al usuario nuevo ya se le pidió el nombre en el mensaje de bienvenida; si en "
     "el historial el usuario acaba de responder con su nombre, salúdalo por su nombre y continúa).\n"
-    "  2. *Disciplina* de interés (Kudo, BJJ, Kick Boxing o Defensa Personal).\n"
+    "  2. *Disciplina* de interés (Kudo, BJJ, Kick Boxing o Defensa Personal). Nota: Kick Boxing "
+    "está en reapertura sin horario activo; si la eligen, regístrala igual y ofréceles la lista "
+    "de espera más una clase de prueba gratis de Kudo o BJJ.\n"
     "  3. *Turno* preferido (mañana, tarde o noche).\n"
     "  4. *Día* en que podría asistir a su clase de prueba gratuita.\n"
     "Haz UNA pregunta a la vez para no abrumar. NO interrogues de golpe ni repitas datos que el "
