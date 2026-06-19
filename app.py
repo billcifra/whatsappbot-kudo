@@ -24,7 +24,6 @@ app = Flask(__name__)
 # reloj se reinicia en cada mensaje. Conversaciones cortas → recordar largo no pesa.
 TTL_SEGUNDOS = 60 * 60 * 24 * 90  # 90 días
 MAX_TURNOS = 20  # 20 turnos (user+assistant). Ajusta si quieres.
-SILENCIO_RE_ENGANCHE = 7200  # 2 horas — umbral para mensaje contextual de retorno
 
 # ---------------------------------------------
 # ✅ Persistencia del contexto de conversación (Redis)
@@ -973,23 +972,9 @@ def webhook():
                 send_message(BIENVENIDA, user_phone)
                 return "ok", 200
 
-            # --- MENSAJE CONTEXTUAL SI HUBO SILENCIO LARGO (>2h con perfil incompleto) ---
-            ctx_existente = cargar_contexto(user_phone) or {}
-            ultimo_contacto = ctx_existente.get("last_seen", ahora)
-            perfil_completo = all(
-                ctx_existente.get(k) for k in ("nombre", "disciplina_raw", "turno_raw", "dia_raw")
-            )
-
-            if (ahora - ultimo_contacto) > SILENCIO_RE_ENGANCHE and not perfil_completo:
-                nombre = ctx_existente.get("nombre", "")
-                saludo = f", {nombre}" if nombre else ""
-                send_message(
-                    f"¡Hola de nuevo{saludo}! 👋 Me alegra que hayas vuelto.\n"
-                    f"¿Te ayudo a coordinar tu clase de prueba gratuita? 🥋",
-                    user_phone
-                )
-                ctx_existente["last_seen"] = ahora
-                guardar_contexto(user_phone, ctx_existente)
+            # Nota: a los usuarios que regresan tras un silencio largo los atiende
+            # directamente el agente IA (saluda, responde su mensaje e invita a la
+            # clase de prueba), evitando un segundo mensaje canned duplicado.
 
             # --- ROUTER DE OPCIONES DIRECTAS (número 1-7) ---
             if user_msg.strip() in respuestas_directas:
