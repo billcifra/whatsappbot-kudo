@@ -122,6 +122,23 @@ FERIADOS = {
     "2026-06-22": "Feriado (lunes) — sin clases",
 }
 
+# ---------------------------------------------
+# Evento temporal: WINTER CAMP (vacaciones de invierno).
+# Se promociona automáticamente solo mientras hoy <= WINTER_CAMP_PROMO_HASTA;
+# después desaparece de las respuestas del bot sin tener que tocar más código.
+# Para futuros eventos, edita o vacía estas constantes.
+# ---------------------------------------------
+WINTER_CAMP_PROMO_HASTA = "2026-07-17"   # último día que se promociona (fin del camp)
+WINTER_CAMP_INICIO = "2026-07-06"        # primer día del camp
+WINTER_CAMP_INFO = (
+    "WINTER CAMP (vacaciones de invierno) — disciplina *Kudo*:\n"
+    "  • Fechas: lunes 6 al viernes 17 de julio (lunes a viernes)\n"
+    "  • Horarios: 10:00–11:00 ó 15:00–16:00 (se elige uno)\n"
+    "  • Full Camp (Lunes a Viernes): Bs. 250\n"
+    "  • Half Camp (Lunes, Miércoles y Viernes): Bs. 150\n"
+    "  • Cupos limitados.\n"
+)
+
 # Cargar credenciales desde variables de entorno
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
@@ -243,12 +260,25 @@ MENU_ROWS = [
 MENU_BODY = "📋 ¿Sobre qué te gustaría saber? Toca una opción 👇"
 
 # Mensajes de conversión para leads de publicidad
-BIENVENIDA = (
-    "¡Hola! 👋 Bienvenido/a a *KUDO Bolivia*, tu centro de artes marciales en La Paz.\n\n"
-    "🥋 Entrenamos *Kudo*, *Brazilian Jiu-Jitsu* y *Defensa Personal* (Kick Boxing próximamente).\n"
-    "🎁 *¡Tu primera clase es completamente GRATIS!* Sin compromiso.\n\n"
-    "Para ayudarte mejor, ¿cómo te llamas? 😊"
-)
+def construir_bienvenida():
+    """Mensaje de bienvenida para usuarios nuevos.
+
+    Durante la ventana de promoción del Winter Camp (hoy <= WINTER_CAMP_PROMO_HASTA)
+    añade un teaser corto del evento; pasada la fecha, el teaser desaparece solo.
+    """
+    teaser = ""
+    if time.strftime("%Y-%m-%d", time.localtime()) <= WINTER_CAMP_PROMO_HASTA:
+        teaser = (
+            "❄️ *¡Nuevo! Winter Camp de Kudo, del 6 al 17 de julio* "
+            "(Full Bs. 250 / Half Bs. 150) — cupos limitados.\n\n"
+        )
+    return (
+        "¡Hola! 👋 Bienvenido/a a *KUDO Bolivia*, tu centro de artes marciales en La Paz.\n\n"
+        f"{teaser}"
+        "🥋 Entrenamos *Kudo*, *Brazilian Jiu-Jitsu* y *Defensa Personal* (Kick Boxing próximamente).\n"
+        "🎁 *¡Tu primera clase es completamente GRATIS!* Sin compromiso.\n\n"
+        "Para ayudarte mejor, ¿cómo te llamas? 😊"
+    )
 
 # Lista de números a notificar en caso de solicitud de atención humana
 notificar_humanos = ["59179598641", "59176785574"]
@@ -398,6 +428,12 @@ SYSTEM_PROMPT = (
     "Disciplinas, Inscripción, Ubicación, ¿Qué es Kudo?, Venta de Guantes). Usa [[MENU]] cuando "
     "ofrezcas opciones, pero NO lo uses si estás en medio del embudo haciendo una pregunta concreta "
     "(por ejemplo pidiendo el nombre, la disciplina, el turno o el día).\n"
+    "\n"
+    "📌 *Eventos temporales:* Si al inicio del mensaje, dentro del contexto de fechas, aparece "
+    "un bloque marcado como EVENTO_VIGENTE (por ejemplo un campamento o promoción), úsalo para "
+    "responder y promociónalo con naturalidad siguiendo sus instrucciones. Si NO aparece ese "
+    "bloque, no inventes ni menciones campamentos, camps ni promociones: significa que no hay "
+    "ninguno vigente.\n"
     "\n"
     "📌 Siempre responde en español neutro, con cortesía y como si formaras parte del equipo de "
     "*KUDO Bolivia*. Si no conoces la respuesta exacta, invita amablemente a visitar el dojo para "
@@ -809,8 +845,31 @@ def append_to_history(ctx: dict, role: str, content: str):
         ctx["history"] = ctx["history"][-(MAX_TURNOS * 2):]
 
 
+def construir_bloque_winter_camp(hoy):
+    """Bloque informativo + instrucción de promoción del Winter Camp para el agente.
+
+    Solo se incluye mientras hoy <= WINTER_CAMP_PROMO_HASTA; pasada esa fecha devuelve
+    una cadena vacía y el agente deja de conocer/promocionar el evento automáticamente.
+    """
+    if hoy > WINTER_CAMP_PROMO_HASTA:
+        return ""
+    return (
+        "EVENTO_VIGENTE — " + WINTER_CAMP_INFO +
+        "INSTRUCCIONES sobre el Winter Camp:\n"
+        "  • Usa estos datos para responder cualquier pregunta sobre el winter camp / "
+        "campamento de invierno / vacaciones.\n"
+        "  • Menciónalo de forma proactiva (sin ser insistente) cuando saludes o cuando "
+        "ofrezcas el menú de opciones. Compara FECHA_HOY con el inicio (" + WINTER_CAMP_INICIO +
+        ") para frasear correctamente: si aún no empieza di que 'empieza el lunes 6 de julio'; "
+        "si ya está dentro de las fechas, di que 'está en curso'.\n"
+        "  • El Winter Camp es un programa PAGADO (Full Bs. 250 / Half Bs. 150); NO es la clase "
+        "de prueba gratuita. Para reservar un cupo (son limitados), pide el nombre y usa "
+        "`guardar_datos_prospecto` y/o `solicitar_asistencia_humana` para coordinar la inscripción.\n"
+    )
+
+
 def construir_contexto_fechas():
-    """Devuelve un bloque de texto con la fecha de hoy y los feriados futuros (o de hoy)."""
+    """Devuelve un bloque de texto con la fecha de hoy, los feriados futuros y eventos vigentes."""
     hoy = time.strftime("%Y-%m-%d", time.localtime())
     dias_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
     dia_nombre = dias_semana[time.localtime().tm_wday]
@@ -819,6 +878,7 @@ def construir_contexto_fechas():
     if feriados_relevantes:
         lineas = [f"  • {f}: {motivo}" for f, motivo in sorted(feriados_relevantes.items())]
         bloque += "FERIADOS (NO hay clases, no coordines clases de prueba estos días):\n" + "\n".join(lineas) + "\n"
+    bloque += construir_bloque_winter_camp(hoy)
     return bloque + "\n"
 
 
@@ -965,11 +1025,12 @@ def webhook():
             if es_nuevo:
                 marcar_bienvenido(user_phone)
                 registrar_interesado(user_phone, f"[NUEVO USUARIO] {user_msg}")
+                bienvenida = construir_bienvenida()
                 guardar_contexto(user_phone, {
                     "last_seen": ahora, "timestamp": ahora,
-                    "history": [{"role": "assistant", "content": BIENVENIDA}], "tema": "nuevo",
+                    "history": [{"role": "assistant", "content": bienvenida}], "tema": "nuevo",
                 })
-                send_message(BIENVENIDA, user_phone)
+                send_message(bienvenida, user_phone)
                 return "ok", 200
 
             # Nota: a los usuarios que regresan tras un silencio largo los atiende
