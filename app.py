@@ -123,21 +123,41 @@ FERIADOS = {
 }
 
 # ---------------------------------------------
-# Evento temporal: WINTER CAMP (vacaciones de invierno).
-# Se promociona automáticamente solo mientras hoy <= WINTER_CAMP_PROMO_HASTA;
-# después desaparece de las respuestas del bot sin tener que tocar más código.
-# Para futuros eventos, edita o vacía estas constantes.
+# Evento temporal vigente (camps de vacaciones, promociones, etc.).
+# Se promociona automáticamente solo mientras hoy <= EVENTO_PROMO_HASTA;
+# después desaparece de las respuestas del bot sin tocar más código.
+# Para anunciar un evento nuevo, llena estas constantes; sin evento, déjalas en "".
 # ---------------------------------------------
-WINTER_CAMP_PROMO_HASTA = "2026-07-17"   # último día que se promociona (fin del camp)
-WINTER_CAMP_INICIO = "2026-07-06"        # primer día del camp
-WINTER_CAMP_INFO = (
-    "WINTER CAMP (vacaciones de invierno) — disciplina *Kudo*:\n"
-    "  • Fechas: lunes 6 al viernes 17 de julio (lunes a viernes)\n"
-    "  • Horarios: 10:00–11:00 ó 15:00–16:00 (se elige uno)\n"
-    "  • Full Camp (Lunes a Viernes): Bs. 250\n"
-    "  • Half Camp (Lunes, Miércoles y Viernes): Bs. 150\n"
-    "  • Cupos limitados.\n"
-)
+EVENTO_PROMO_HASTA = ""   # último día de promoción (YYYY-MM-DD); "" = sin evento
+EVENTO_TEASER = ""        # línea corta para el mensaje de bienvenida; terminar en "\n\n"
+EVENTO_INFO = ""          # descripción: nombre, fechas, horarios, precios
+EVENTO_INSTRUCCIONES = "" # instrucciones al agente sobre cómo responder/promocionarlo
+# --- Ejemplo (Winter Camp jul-2026), dejar comentado como plantilla: ---
+# EVENTO_PROMO_HASTA = "2026-07-17"
+# EVENTO_TEASER = (
+#     "❄️ *¡Nuevo! Winter Camp de Kudo, del 6 al 17 de julio* "
+#     "(Full Bs. 250 / Half Bs. 150) — cupos limitados.\n\n"
+# )
+# EVENTO_INFO = (
+#     "WINTER CAMP (vacaciones de invierno) — disciplina *Kudo*:\n"
+#     "  • Fechas: lunes 6 al viernes 17 de julio (lunes a viernes)\n"
+#     "  • Horarios: 10:00–11:00 ó 15:00–16:00 (se elige uno)\n"
+#     "  • Full Camp (Lunes a Viernes): Bs. 250\n"
+#     "  • Half Camp (Lunes, Miércoles y Viernes): Bs. 150\n"
+#     "  • Cupos limitados.\n"
+# )
+# EVENTO_INSTRUCCIONES = (
+#     "INSTRUCCIONES sobre el Winter Camp:\n"
+#     "  • Usa estos datos para responder cualquier pregunta sobre el winter camp / "
+#     "campamento de invierno / vacaciones.\n"
+#     "  • Menciónalo de forma proactiva (sin ser insistente) cuando saludes o cuando "
+#     "ofrezcas el menú de opciones. Compara FECHA_HOY con el inicio (2026-07-06) "
+#     "para frasear correctamente: si aún no empieza di que 'empieza el lunes 6 de julio'; "
+#     "si ya está dentro de las fechas, di que 'está en curso'.\n"
+#     "  • El Winter Camp es un programa PAGADO (Full Bs. 250 / Half Bs. 150); NO es la clase "
+#     "de prueba gratuita. Para reservar un cupo (son limitados), pide el nombre y usa "
+#     "`guardar_datos_prospecto` y/o `solicitar_asistencia_humana` para coordinar la inscripción.\n"
+# )
 
 # Cargar credenciales desde variables de entorno
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
@@ -263,15 +283,12 @@ MENU_BODY = "📋 ¿Sobre qué te gustaría saber? Toca una opción 👇"
 def construir_bienvenida():
     """Mensaje de bienvenida para usuarios nuevos.
 
-    Durante la ventana de promoción del Winter Camp (hoy <= WINTER_CAMP_PROMO_HASTA)
-    añade un teaser corto del evento; pasada la fecha, el teaser desaparece solo.
+    Si hay un evento temporal vigente (hoy <= EVENTO_PROMO_HASTA) añade su teaser
+    corto; pasada la fecha (o sin evento configurado), el teaser desaparece solo.
     """
     teaser = ""
-    if time.strftime("%Y-%m-%d", time.localtime()) <= WINTER_CAMP_PROMO_HASTA:
-        teaser = (
-            "❄️ *¡Nuevo! Winter Camp de Kudo, del 6 al 17 de julio* "
-            "(Full Bs. 250 / Half Bs. 150) — cupos limitados.\n\n"
-        )
+    if EVENTO_PROMO_HASTA and time.strftime("%Y-%m-%d", time.localtime()) <= EVENTO_PROMO_HASTA:
+        teaser = EVENTO_TEASER
     return (
         "¡Hola! 👋 Bienvenido/a a *KUDO Bolivia*, tu centro de artes marciales en La Paz.\n\n"
         f"{teaser}"
@@ -845,27 +862,15 @@ def append_to_history(ctx: dict, role: str, content: str):
         ctx["history"] = ctx["history"][-(MAX_TURNOS * 2):]
 
 
-def construir_bloque_winter_camp(hoy):
-    """Bloque informativo + instrucción de promoción del Winter Camp para el agente.
+def construir_bloque_evento(hoy):
+    """Bloque EVENTO_VIGENTE (info + instrucciones) para el agente.
 
-    Solo se incluye mientras hoy <= WINTER_CAMP_PROMO_HASTA; pasada esa fecha devuelve
-    una cadena vacía y el agente deja de conocer/promocionar el evento automáticamente.
+    Solo se incluye mientras haya evento configurado y hoy <= EVENTO_PROMO_HASTA;
+    en caso contrario devuelve "" y el agente no conoce/promociona ningún evento.
     """
-    if hoy > WINTER_CAMP_PROMO_HASTA:
+    if not EVENTO_PROMO_HASTA or hoy > EVENTO_PROMO_HASTA:
         return ""
-    return (
-        "EVENTO_VIGENTE — " + WINTER_CAMP_INFO +
-        "INSTRUCCIONES sobre el Winter Camp:\n"
-        "  • Usa estos datos para responder cualquier pregunta sobre el winter camp / "
-        "campamento de invierno / vacaciones.\n"
-        "  • Menciónalo de forma proactiva (sin ser insistente) cuando saludes o cuando "
-        "ofrezcas el menú de opciones. Compara FECHA_HOY con el inicio (" + WINTER_CAMP_INICIO +
-        ") para frasear correctamente: si aún no empieza di que 'empieza el lunes 6 de julio'; "
-        "si ya está dentro de las fechas, di que 'está en curso'.\n"
-        "  • El Winter Camp es un programa PAGADO (Full Bs. 250 / Half Bs. 150); NO es la clase "
-        "de prueba gratuita. Para reservar un cupo (son limitados), pide el nombre y usa "
-        "`guardar_datos_prospecto` y/o `solicitar_asistencia_humana` para coordinar la inscripción.\n"
-    )
+    return "EVENTO_VIGENTE — " + EVENTO_INFO + EVENTO_INSTRUCCIONES
 
 
 def construir_contexto_fechas():
@@ -878,7 +883,7 @@ def construir_contexto_fechas():
     if feriados_relevantes:
         lineas = [f"  • {f}: {motivo}" for f, motivo in sorted(feriados_relevantes.items())]
         bloque += "FERIADOS (NO hay clases, no coordines clases de prueba estos días):\n" + "\n".join(lineas) + "\n"
-    bloque += construir_bloque_winter_camp(hoy)
+    bloque += construir_bloque_evento(hoy)
     return bloque + "\n"
 
 
