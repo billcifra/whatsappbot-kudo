@@ -1,12 +1,68 @@
-fastapi>=0.115,<1
-uvicorn[standard]>=0.30
-httpx>=0.27
-jinja2>=3.1,<4
-python-dotenv>=1.0
-openai>=2.0,<3
-openai-agents>=0.6,<0.7
-gspread>=6.0,<7
-google-auth>=2.0
-tzdata>=2024.1
-# Solo para la migración única desde el Redis anterior (MIGRAR_DESDE_REDIS_URL). Quitar después.
-redis>=5.0
+# Versiones EXACTAS (Linux / Python 3.12, como el Dockerfile), probadas juntas con pytest y el agente real.
+# No usar rangos: un openai más nuevo rompió openai-agents 0.6.x en producción (2026-11-16).
+#
+# Dependencias directas: openai, openai-agents, fastapi, uvicorn, httpx, jinja2, python-dotenv, gspread,
+# google-auth, tzdata y redis (este último solo para la migración desde Redis; quitar cuando se elimine).
+# Para actualizar: cambiar las directas en un venv limpio, correr pytest y scripts/simular.py, y regenerar
+# esta lista con todas las dependencias indirectas.
+annotated-doc==0.0.6
+annotated-types==0.8.0
+anyio==4.16.0
+attrs==26.1.0
+cachetools==5.5.2
+certifi==2026.10.23
+cffi==2.1.1
+charset-normalizer==3.5.2
+click==8.5.1
+colorama==0.4.6
+cryptography==50.0.2
+distro==1.9.0
+fastapi==0.163.1
+google-auth==2.40.3
+google-auth-oauthlib==1.5.0
+griffe==1.15.0
+gspread==6.2.1
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.9.0
+httpx==0.28.1
+httpx-sse==0.4.3
+idna==3.20
+jinja2==3.1.6
+jiter==0.19.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+markupsafe==3.0.4
+mcp==1.30.0
+oauthlib==4.0.1
+openai==2.14.0
+openai-agents==0.6.5
+opentelemetry-api==1.45.2
+pyasn1==0.6.5
+pyasn1-modules==0.4.2
+pycparser==3.12
+pydantic==2.14.3
+pydantic-core==2.50.4
+pydantic-settings==2.15.0
+pyjwt==2.15.1
+python-dotenv==1.1.0
+python-multipart==0.0.33
+pyyaml==6.0.3
+redis==5.3.1
+referencing==0.37.0
+requests==2.34.2
+requests-oauthlib==2.0.0
+rpds-py==2026.9.1
+rsa==4.9.1
+sniffio==1.3.1
+sse-starlette==3.7.0
+starlette==1.10.0
+tqdm==4.70.1
+types-requests==2.33.0.20261030
+typing-extensions==4.16.0
+typing-inspection==0.4.5
+tzdata==2026.6
+urllib3==2.8.0
+uvicorn==0.40.0
+watchfiles==1.3.0
+websockets==17.4

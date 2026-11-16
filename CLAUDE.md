@@ -85,6 +85,7 @@ Todas las fechas se guardan en epoch y se muestran en `America/La_Paz`.
 
 ## Reglas
 
+- **Versiones exactas.** `requirements.txt` fija TODAS las dependencias (también las indirectas) para Linux/Python 3.12. Nunca usar rangos: un `openai` más nuevo rompió `openai-agents` 0.6.x en producción. Para actualizar: venv limpio, `pytest`, `scripts/simular.py` y regenerar la lista. El Dockerfile verifica que `openai` y `openai-agents` sean compatibles; si no lo son, el build falla.
 - **Un solo proceso.** No subir `--workers` ni agregar réplicas en Railway: SQLite y los locks por cliente viven en memoria.
 - **Cambios de esquema.** Solo aditivos. Una columna nueva va en `COLUMNAS_NUEVAS`; no se reescriben tablas que ya están desplegadas.
 - **Horarios y precios.** Si cambian, actualizar `prompts.py` **y** `contenido.py`.

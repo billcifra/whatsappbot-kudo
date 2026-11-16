@@ -3,6 +3,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 DATA_DIR=/data
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# Chequeo de compatibilidad openai / openai-agents: si no encajan, el build falla y Railway
+# mantiene la versión anterior (antes, el bot desplegaba y fallaba en cada mensaje al agente).
+RUN python -c "from agents import RunContextWrapper; from agents.usage import Usage; Usage(); RunContextWrapper(context=None)"
 COPY app ./app
 COPY scripts ./scripts
 # La base SQLite vive en DATA_DIR=/data: en Railway hay que montar un Volume en /data.

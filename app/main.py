@@ -29,7 +29,7 @@ from fastapi.responses import PlainTextResponse
 from .agente import AgenteKudo, Respuesta, build_agent_input
 from .config import Settings, cargar_settings
 from .importacion_sheets import MARCA as MARCA_IMPORTACION, importar
-from .contenido import AUDIO_NO_ENTENDIDO, TIPO_NO_SOPORTADO, TITULO_OPCION, construir_bienvenida, respuestas_directas
+from .contenido import AUDIO_NO_ENTENDIDO, FALLA_AGENTE, TIPO_NO_SOPORTADO, TITULO_OPCION, construir_bienvenida, respuestas_directas
 from .migracion import MARCA as MARCA_MIGRACION, conectar_redis, migrar_desde_redis
 from .panel import montar_panel
 from .panel.auth import CLAVE_MIN, hash_clave
@@ -178,7 +178,14 @@ class Servicio:
         self.store.agregar_mensaje(wa_id, "user", texto, tipo=tipo)
         historial = self.store.historial(wa_id, MAX_TURNOS * 2, desde=time.time() - TTL_SEGUNDOS)
         entrada = build_agent_input(wa_id, texto, historial, self.store.contacto(wa_id), self.ahora())
-        r = await self.agente.responder(self, wa_id, entrada)
+        try:
+            r = await self.agente.responder(self, wa_id, entrada)
+        except Exception:
+            log.exception("Falló el agente para %s; se envía la respuesta de respaldo", wa_id)
+            # Respuesta de respaldo: no se deja al cliente sin contestar; el menú no depende de la IA.
+            await self._enviar(wa_id, FALLA_AGENTE, tipo="otro", para_agente=False)
+            await self.wa.enviar_menu(wa_id)
+            return
         costo = (r.entrada * self.s.precio_entrada_usd_m + r.salida * self.s.precio_salida_usd_m) / 1_000_000
         self.store.registrar_consumo(wa_id, r.entrada, r.salida, costo)
 

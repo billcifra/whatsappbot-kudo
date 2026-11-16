@@ -165,6 +165,10 @@ AUDIO_NO_ENTENDIDO = ("🎙️ Recibí tu audio pero no logré entenderlo bien. 
 TIPO_NO_SOPORTADO = ("Por ahora puedo leer *texto* y escuchar *notas de voz* 🎙️. "
                      "Cuéntame por aquí en qué te puedo ayudar 😊")
 
+# Si el agente de IA falla (OpenAI caído, error inesperado): el menú sigue funcionando sin IA.
+FALLA_AGENTE = ("Disculpa, tuve un problema técnico 🙏 "
+                "Mientras lo resolvemos, toca una opción del menú 👇")
+
 # Nombre corto de cada opción del menú (para el historial y el panel).
 TITULO_OPCION = {fila["id"]: fila["title"] for fila in MENU_ROWS}
 

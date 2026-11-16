@@ -7,7 +7,7 @@ import json
 
 from fastapi.testclient import TestClient
 
-from app.contenido import AUDIO_NO_ENTENDIDO, TIPO_NO_SOPORTADO, respuestas_directas
+from app.contenido import AUDIO_NO_ENTENDIDO, FALLA_AGENTE, TIPO_NO_SOPORTADO, respuestas_directas
 from app.main import crear_app
 from app.sheets import INTERESADOS, SOLICITUDES
 from app.whatsapp import extraer_mensajes
@@ -182,7 +182,11 @@ def test_error_del_agente_no_rompe_el_servicio(settings):
     def falla(svc, wa_id):
         raise RuntimeError("OpenAI caído")
 
-    svc, _, wa, *_ = armar(settings, [falla, "Ahora sí"])
+    svc, _, wa, _, store = armar(settings, [falla, "Ahora sí"])
     saludado(svc, wa)
     enviar(svc, payload("hola", "wamid.2"), payload("hola otra vez", "wamid.3"))
-    assert wa.textos_a(CLIENTE) == ["Ahora sí"]
+    # al fallar, el cliente recibe la respuesta de respaldo y el menú (que no depende de la IA)
+    assert wa.textos_a(CLIENTE) == [FALLA_AGENTE, "Ahora sí"]
+    assert wa.menus == [CLIENTE]
+    # el respaldo no entra al contexto del agente
+    assert FALLA_AGENTE not in [h["content"] for h in store.historial(CLIENTE, 40)]
