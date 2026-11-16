@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block titulo %}Resumen{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>Resumen</h1>
+  <nav class="filtros" aria-label="Período">
+    {% for p in periodos %}<a href="/panel/?dias={{ p }}" class="{{ 'activo' if p == dias }}">Últimos {{ p }} días</a>{% endfor %}
+  </nav>
+</div>
+
+<section class="cifras">
+  <a class="cifra" href="/panel/prospectos?dias={{ dias }}"><strong>{{ nuevos }}</strong><span>prospectos nuevos</span></a>
+  <div class="cifra"><strong>{{ mensajes }}</strong><span>mensajes de clientes</span></div>
+  <div class="cifra"><strong>{{ solicitudes_periodo }}</strong><span>pedidos de atención humana</span></div>
+  <a class="cifra" href="#pendientes"><strong>{{ pendientes|length }}</strong><span>solicitudes sin atender</span></a>
+  <a class="cifra" href="#pausados"><strong>{{ pausados|length }}</strong><span>chats en pausa</span></a>
+</section>
+
+<div class="rejilla">
+  <section class="tarjeta">
+    <h2>Mensajes de clientes por día</h2>
+    {{ g_mensajes }}
+  </section>
+  <section class="tarjeta">
+    <h2>Prospectos nuevos por día</h2>
+    {{ g_nuevos }}
+  </section>
+</div>
+<details class="tarjeta">
+  <summary>Ver los datos por día en tabla</summary>
+  <table>
+    <thead><tr><th>Día</th><th>Mensajes de clientes</th><th>Prospectos nuevos</th></tr></thead>
+    <tbody>{% for d, m, n in tabla_dias|reverse %}<tr><td>{{ d }}</td><td>{{ m }}</td><td>{{ n }}</td></tr>{% endfor %}</tbody>
+  </table>
+</details>
+
+<section class="tarjeta">
+  <h2>Embudo de datos</h2>
+  <p class="suave">De los {{ activos }} contactos con actividad en el período, cuántos ya dieron cada dato.</p>
+  <ul class="embudo">
+    <li><strong>{{ con_nombre }}</strong> nombre</li>
+    <li><strong>{{ con_disciplina }}</strong> disciplina</li>
+    <li><strong>{{ con_turno }}</strong> turno</li>
+    <li><strong>{{ con_dia }}</strong> día de la clase de prueba</li>
+  </ul>
+</section>
+
+<div class="rejilla">
+  <section class="tarjeta"><h2>Disciplina de interés</h2>{{ g_disciplinas }}</section>
+  <section class="tarjeta"><h2>Turno preferido</h2>{{ g_turnos }}</section>
+  <section class="tarjeta"><h2>Día para la clase de prueba</h2>{{ g_dias }}</section>
+  <section class="tarjeta"><h2>Opciones del menú más usadas</h2>{{ g_menu }}</section>
+</div>
+
+<div class="rejilla">
+  <section class="tarjeta" id="pendientes">
+    <h2>Solicitudes de atención humana sin atender</h2>
+    {% if pendientes %}
+    <ul class="lista">
+      {% for s in pendientes %}
+      <li>
+        <a href="/panel/conversaciones/{{ s.wa_id }}">{{ s.nombre or s.nombre_perfil or ('+' ~ s.wa_id) }}</a>
+        <span class="suave">· {{ s.ts|fecha_corta }}</span><br>
+        <span class="texto">{{ (s.mensaje or '')|truncate(140) }}</span>
+        <form method="post" action="/panel/solicitudes/{{ s.id }}/atendida" class="en-linea">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="boton-secundario">Marcar atendida</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="suave">No hay solicitudes pendientes.</p>{% endif %}
+  </section>
+
+  <section class="tarjeta" id="pausados">
+    <h2>Conversaciones en pausa</h2>
+    {% if pausados %}
+    <ul class="lista">
+      {% for p in pausados %}
+      <li><a href="/panel/conversaciones/{{ p.wa_id }}">{{ p.nombre or p.nombre_perfil or ('+' ~ p.wa_id) }}</a>
+        — {{ p.motivo or 'pausa' }} <span class="suave">(hasta {{ p.hasta|fecha_corta }})</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="suave">El bot está atendiendo a todos.</p>{% endif %}
+  </section>
+</div>
+
+<section class="tarjeta">
+  <h2>Consumo de la IA</h2>
+  <p>Hoy: <strong>US$ {{ '%.4f'|format(consumo_hoy.costo) }}</strong> · {{ consumo_hoy.llamadas }} respuestas del agente</p>
+  <p>Este mes: <strong>US$ {{ '%.4f'|format(consumo_mes.costo) }}</strong> · {{ consumo_mes.llamadas }} respuestas del agente</p>
+  <p class="suave">Estimado con los precios de PRECIO_ENTRADA_USD_M y PRECIO_SALIDA_USD_M. No incluye la transcripción de audios.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,15 @@
+.env
+.env.*
+credentials.json
+.venv/
+venv/
+.git/
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+Pruebas/
+tests/
+*.csv

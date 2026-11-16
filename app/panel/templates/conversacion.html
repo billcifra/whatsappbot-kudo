@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% set titulo_contacto = contacto.nombre or contacto.nombre_perfil or ('+' ~ wa_id) %}
+{% block titulo %}{{ titulo_contacto }}{% endblock %}
+{% block contenido %}
+<p><a href="/panel/conversaciones">← Conversaciones</a></p>
+<h1>{{ contacto.nombre or contacto.nombre_perfil or 'Sin nombre' }} <span class="suave">+{{ wa_id }}</span></h1>
+
+<div class="columnas">
+<section class="tarjeta chat">
+  {% for m in mensajes %}
+  <div class="burbuja {{ 'cliente' if m.rol == 'user' else ('equipo' if m.rol == 'staff' else 'negocio') }}">
+    {% if m.rol == 'staff' %}<div class="sim-etiqueta">Respuesta del equipo</div>{% elif m.tipo == 'menu' and m.rol == 'assistant' %}<div class="sim-etiqueta">Menú (respuesta fija)</div>{% elif m.tipo == 'audio' and m.rol == 'user' %}<div class="sim-etiqueta">🎙️ Nota de voz (transcrita)</div>{% endif %}
+    <div class="texto">{{ m.contenido }}</div>
+    <div class="hora">{{ m.ts|fecha_corta }}</div>
+  </div>
+  {% else %}
+  <p class="suave">Sin mensajes guardados.</p>
+  {% endfor %}
+</section>
+
+<aside>
+  <section class="tarjeta">
+    <h2>Perfil del prospecto</h2>
+    <dl>
+      <dt>Nombre</dt><dd>{{ contacto.nombre or '—' }}</dd>
+      <dt>WhatsApp</dt><dd>{{ contacto.nombre_perfil or '—' }}</dd>
+      <dt>Disciplina</dt><dd>{{ contacto.disciplina or '—' }}{% if disciplina_cat and disciplina_cat != contacto.disciplina %} <span class="suave">({{ disciplina_cat }})</span>{% endif %}</dd>
+      <dt>Turno</dt><dd>{{ contacto.turno or '—' }}</dd>
+      <dt>Día</dt><dd>{{ contacto.dia or '—' }}</dd>
+      <dt>Primer contacto</dt><dd>{{ contacto.primer_contacto|fecha }}</dd>
+      <dt>Último mensaje</dt><dd>{{ contacto.ultimo_mensaje|fecha }}</dd>
+    </dl>
+    <p><a href="https://wa.me/{{ wa_id }}" rel="noopener noreferrer" target="_blank">Abrir en WhatsApp</a></p>
+  </section>
+
+  <section class="tarjeta">
+    <h2>Bot</h2>
+    {% if pausa %}
+    <p><span class="estado estado-pausa">En pausa</span> hasta {{ pausa.hasta|fecha_corta }}<br><span class="suave">{{ pausa.motivo }}</span></p>
+    <form method="post" action="/panel/conversaciones/{{ wa_id }}/reactivar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Devolver al bot</button>
+    </form>
+    {% else %}
+    <p>El bot está atendiendo.</p>
+    <form method="post" action="/panel/conversaciones/{{ wa_id }}/pausar" class="en-linea">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Pausar <input name="horas" value="{{ '%g'|format(horas_pausa) }}" inputmode="decimal" size="4"> horas</label>
+      <button type="submit">Pausar</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="tarjeta">
+    <h2>Responder como persona</h2>
+    {% if not en_ventana %}<p class="alerta-texto">El contacto no escribió en las últimas 24 h: WhatsApp no dejará enviar texto libre.</p>{% endif %}
+    <form method="post" action="/panel/conversaciones/{{ wa_id }}/responder">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <textarea name="texto" rows="4" maxlength="4000" required></textarea>
+      <button type="submit">Enviar</button>
+      <p class="suave">Al enviar, el bot queda en pausa para este contacto.</p>
+    </form>
+  </section>
+
+  {% if solicitudes %}
+  <section class="tarjeta">
+    <h2>Pedidos de atención humana</h2>
+    <ul class="lista">
+      {% for s in solicitudes %}
+      <li><span class="suave">{{ s.ts|fecha_corta }}</span> — {{ (s.mensaje or '')|truncate(100) }}<br>
+        {% if s.atendida %}<span class="suave">Atendida por {{ s.atendida_por }} ({{ s.atendida|fecha_corta }})</span>
+        {% else %}
+        <form method="post" action="/panel/solicitudes/{{ s.id }}/atendida" class="en-linea">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="hidden" name="volver" value="{{ wa_id }}">
+          <button type="submit" class="boton-secundario">Marcar atendida</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</aside>
+</div>
+{% endblock %}

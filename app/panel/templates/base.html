@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% if refrescar and auto_refrescar %}<meta http-equiv="refresh" content="{{ refrescar }}">{% endif %}
+<title>{% block titulo %}Panel{% endblock %} · {{ negocio }}</title>
+<link rel="stylesheet" href="/panel/estatico/panel.css">
+</head>
+<body>
+{% if sesion %}
+<header class="barra">
+  <div class="marca">🥋 {{ negocio }}</div>
+  <nav>
+    <a href="/panel/" class="{{ 'activo' if seccion == 'resumen' }}">Resumen</a>
+    <a href="/panel/prospectos" class="{{ 'activo' if seccion == 'prospectos' }}">Prospectos</a>
+    <a href="/panel/conversaciones" class="{{ 'activo' if seccion == 'conversaciones' }}">Conversaciones</a>
+  </nav>
+  <form method="post" action="/panel/salir" class="salir">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <span class="usuario">{{ sesion.nombre or sesion.usuario }}</span>
+    <button type="submit" class="boton-link">Salir</button>
+  </form>
+</header>
+{% endif %}
+<main>
+  {% if aviso %}<div class="aviso aviso-{{ aviso[0] }}">{{ aviso[1] }}</div>{% endif %}
+  {% block contenido %}{% endblock %}
+</main>
+</body>
+</html>

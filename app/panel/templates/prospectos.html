@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Prospectos{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <h1>Prospectos <span class="suave">({{ prospectos|length }})</span></h1>
+  <a class="boton" href="/panel/prospectos.csv{{ ('?' ~ consulta) if consulta }}">Descargar CSV</a>
+</div>
+
+<form method="get" action="/panel/prospectos" class="filtros-form">
+  <label>Primer contacto
+    <select name="dias">
+      <option value="">Todos</option>
+      {% for p in periodos %}<option value="{{ p }}" {{ 'selected' if p == dias }}>Últimos {{ p }} días</option>{% endfor %}
+    </select>
+  </label>
+  <label>Disciplina
+    <select name="disciplina">
+      <option value="">Todas</option>
+      {% for d in disciplinas %}<option value="{{ d }}" {{ 'selected' if d == disciplina }}>{{ d }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Filtrar</button>
+</form>
+
+<section class="tarjeta">
+  {% if prospectos %}
+  <table>
+    <thead><tr><th>Contacto</th><th>Disciplina</th><th>Turno</th><th>Día</th><th>Primer contacto</th><th>Último mensaje</th><th>Msjs</th></tr></thead>
+    <tbody>
+    {% for p in prospectos %}
+      <tr>
+        <td><a href="/panel/conversaciones/{{ p.wa_id }}">{{ p.nombre or p.nombre_perfil or 'Sin nombre' }}</a>
+          {% if p.solicitudes %}<span class="estado estado-pausa" title="Pidió atención humana">humano</span>{% endif %}<br>
+          <span class="suave">+{{ p.wa_id }}</span></td>
+        <td>{{ p.disciplina or '—' }}</td>
+        <td>{{ p.turno or '—' }}</td>
+        <td>{{ p.dia or '—' }}</td>
+        <td>{{ p.primer_contacto|fecha_corta }}</td>
+        <td>{{ p.ultimo_mensaje|fecha_corta }}</td>
+        <td>{{ p.mensajes }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="suave">No hay prospectos con estos filtros.</p>{% endif %}
+</section>
+{% endblock %}

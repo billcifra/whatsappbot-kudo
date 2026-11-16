@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Conversaciones{% endblock %}
+{% block contenido %}
+<h1>Conversaciones</h1>
+<section class="tarjeta">
+  {% if conversaciones %}
+  <table>
+    <thead><tr><th>Contacto</th><th>Último mensaje</th><th>Hora</th><th>Bot</th></tr></thead>
+    <tbody>
+    {% for c in conversaciones %}
+      <tr>
+        <td><a href="/panel/conversaciones/{{ c.wa_id }}">{{ c.nombre or c.nombre_perfil or 'Sin nombre' }}</a><br><span class="suave">+{{ c.wa_id }}{% if c.disciplina %} · {{ c.disciplina }}{% endif %}</span></td>
+        <td class="recorte">{{ (c.ultimo_texto or '')|truncate(90) }}</td>
+        <td>{{ c.ultimo_mensaje|fecha_corta }}</td>
+        <td>
+          {% if c.pausa_hasta %}<span class="estado estado-pausa">En pausa</span>{% else %}<span class="suave">Atiende</span>{% endif %}
+          {% if c.pendientes %}<br><span class="estado estado-nuevo">Pidió humano</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="suave">Todavía no hay conversaciones.</p>{% endif %}
+</section>
+{% endblock %}
