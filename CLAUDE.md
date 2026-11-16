@@ -46,7 +46,7 @@ Volume montado en `/data` (`DATA_DIR=/data`).
 | `reintentos.py` | Backoff exponencial: 3 intentos, 1s/2s/4s, timeout de 20s |
 | `sheets.py` | Copia secundaria en Google Sheets; escribe en un hilo y nunca bloquea |
 | `transcripcion.py` | Notas de voz con Whisper |
-| `migracion.py` | Migración única Redis → SQLite (`MIGRAR_DESDE_REDIS_URL`; en Railway, si no está, `REDIS_URL`) |
+| `migracion.py` | Migración única Redis → SQLite, ya hecha el 2026-11-16. Redis ya no existe y `redis` no está en requirements; queda por si se necesita otra vez (`MIGRAR_DESDE_REDIS_URL`) |
 | `importacion_sheets.py` | Importación única del histórico de Sheets (`IMPORTAR_HISTORICO_SHEETS=true`). Corre después de la migración; fechas de la hoja en UTC; excluye `TEST` y `NUMEROS_PERSONAL` |
 | `panel/` | `rutas.py` (rutas), `auth.py` (scrypt, sesiones, CSRF, bloqueo), `metricas.py` (series y normalización), `graficos.py` (SVG del servidor), `templates/`, `static/panel.css` |
 

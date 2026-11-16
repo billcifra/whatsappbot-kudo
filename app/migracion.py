@@ -1,7 +1,8 @@
 """Migración única: copia los contextos del Redis anterior (ctx:* y bienvenido:*) a SQLite.
 
 Se ejecuta al arrancar solo si existe MIGRAR_DESDE_REDIS_URL y todavía no se hizo (marca en la tabla
-meta). Después de verificar los datos en el panel, borra la variable y el servicio Redis de Railway.
+meta). Ya se ejecutó en producción (2026-11-16) y el servicio Redis se eliminó; para usarla otra vez
+hay que instalar `redis` (no está en requirements.txt).
 """
 
 from __future__ import annotations

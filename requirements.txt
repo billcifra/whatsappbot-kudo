@@ -2,7 +2,7 @@
 # No usar rangos: un openai más nuevo rompió openai-agents 0.6.x en producción (2026-11-16).
 #
 # Dependencias directas: openai, openai-agents, fastapi, uvicorn, httpx, jinja2, python-dotenv, gspread,
-# google-auth, tzdata y redis (este último solo para la migración desde Redis; quitar cuando se elimine).
+# google-auth y tzdata. (redis se quitó el 2026-11-16: la migración desde Redis ya se hizo y el servicio se eliminó.)
 # Para actualizar: cambiar las directas en un venv limpio, correr pytest y scripts/simular.py, y regenerar
 # esta lista con todas las dependencias indirectas.
 annotated-doc==0.0.6
@@ -48,7 +48,6 @@ pyjwt==2.15.1
 python-dotenv==1.1.0
 python-multipart==0.0.33
 pyyaml==6.0.3
-redis==5.3.1
 referencing==0.37.0
 requests==2.34.2
 requests-oauthlib==2.0.0

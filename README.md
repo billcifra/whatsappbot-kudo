@@ -42,16 +42,16 @@ uvicorn app.main:app --port 8000 --reload
    - `NUMEROS_PERSONAL`: números del equipo separados por coma.
    - `PANEL_USUARIO_INICIAL` y `PANEL_CLAVE_INICIAL`: primer usuario del panel (clave de 10 o más caracteres).
    - `IMPORTAR_HISTORICO_SHEETS=true`: importa una vez el histórico de Google Sheets (ver el paso 6).
-   - La migración desde Redis usa el `REDIS_URL` que ya existe. Para desactivarla, define `MIGRAR_DESDE_REDIS_URL` vacía.
 5. **Una sola réplica.** No escales a más réplicas ni workers: SQLite y el orden de los mensajes viven en un único proceso.
-6. **Datos anteriores.** Al primer arranque, y una sola vez (queda una marca en la base):
+6. **Datos anteriores (ya hecho el 2026-11-16).** Al primer arranque, y una sola vez (queda una marca en la base):
    - El bot copia de Redis los contactos, el perfil y el historial.
    - Después importa el histórico de Sheets:
      - contactos, eventos para los gráficos y solicitudes (estas quedan como atendidas);
      - pone la hora real a los mensajes que vinieron de Redis;
      - omite las filas `TEST` y las de los números del equipo.
    - Los logs muestran los conteos. Revisa en el panel (*Prospectos* y *Resumen* con 90 días) que estén los datos.
-   - Después borra `IMPORTAR_HISTORICO_SHEETS` y `REDIS_URL`, elimina el servicio Redis y quita `redis` de `requirements.txt`.
+   - Hecho eso, se quitaron `IMPORTAR_HISTORICO_SHEETS`, `REDIS_URL`, el servicio Redis y la dependencia `redis`.
+     Para volver a migrar desde un Redis habría que instalar `redis` y definir `MIGRAR_DESDE_REDIS_URL`.
    - Para probar la importación en local sin guardar nada: `python scripts/importar_sheets.py --simular`.
 7. **Verificación.**
    - `https://<tu-dominio>/salud` responde `{"ok": true}`.
