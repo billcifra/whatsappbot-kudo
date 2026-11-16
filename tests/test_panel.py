@@ -143,3 +143,18 @@ def test_usuario_inicial(settings):
     settings.panel_clave_inicial = "una-clave-larga"
     crear_usuario_inicial(settings, store)
     assert [u["usuario"] for u in store.usuarios()] == ["dojo"]
+
+
+def test_numeros_del_equipo_en_conversaciones_pero_no_en_prospectos(settings):
+    from conftest import PERSONAL
+    svc, _, store = preparar(settings)
+    store.registrar_entrante(PERSONAL, "Sensei")
+    store.agregar_mensaje(PERSONAL, "user", "prueba del equipo")
+    with TestClient(crear_app(servicio=svc)) as c:
+        entrar(c)
+        html = c.get("/panel/conversaciones").text
+        assert f"/panel/conversaciones/{PERSONAL}" in html and "Equipo" in html
+        assert f"/panel/conversaciones/{CLIENTE}" in html
+        assert "Equipo" in c.get(f"/panel/conversaciones/{PERSONAL}").text
+        assert PERSONAL not in c.get("/panel/prospectos").text
+        assert PERSONAL not in c.get("/panel/prospectos.csv").text

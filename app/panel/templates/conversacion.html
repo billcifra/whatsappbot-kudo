@@ -3,7 +3,7 @@
 {% block titulo %}{{ titulo_contacto }}{% endblock %}
 {% block contenido %}
 <p><a href="/panel/conversaciones">← Conversaciones</a></p>
-<h1>{{ contacto.nombre or contacto.nombre_perfil or 'Sin nombre' }} <span class="suave">+{{ wa_id }}</span></h1>
+<h1>{{ contacto.nombre or contacto.nombre_perfil or 'Sin nombre' }} <span class="suave">+{{ wa_id }}</span>{% if es_equipo %} <span class="estado estado-equipo">Equipo</span>{% endif %}</h1>
 
 <div class="columnas">
 <section class="tarjeta chat">

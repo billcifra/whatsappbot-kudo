@@ -9,7 +9,8 @@
     <tbody>
     {% for c in conversaciones %}
       <tr>
-        <td><a href="/panel/conversaciones/{{ c.wa_id }}">{{ c.nombre or c.nombre_perfil or 'Sin nombre' }}</a><br><span class="suave">+{{ c.wa_id }}{% if c.disciplina %} · {{ c.disciplina }}{% endif %}</span></td>
+        <td><a href="/panel/conversaciones/{{ c.wa_id }}">{{ c.nombre or c.nombre_perfil or 'Sin nombre' }}</a>
+          {% if c.es_equipo %}<span class="estado estado-equipo" title="Número del equipo (NUMEROS_PERSONAL)">Equipo</span>{% endif %}<br><span class="suave">+{{ c.wa_id }}{% if c.disciplina %} · {{ c.disciplina }}{% endif %}</span></td>
         <td class="recorte">{{ (c.ultimo_texto or '')|truncate(90) }}</td>
         <td>{{ c.ultimo_mensaje|fecha_corta }}</td>
         <td>

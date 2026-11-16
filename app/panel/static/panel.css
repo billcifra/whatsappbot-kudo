@@ -49,6 +49,7 @@ dd { margin: 0; }
 .estado-confirmado, .estado-en_preparacion { background: #eff4ff; color: #3538cd; }
 .estado-listo, .estado-enviado { background: #f4f3ff; color: #5925dc; }
 .estado-entregado { background: var(--ok-fondo); color: var(--ok); }
+.estado-equipo { background: #eff4ff; color: #3538cd; }
 .estado-cancelado, .estado-pausa { background: var(--alerta-fondo); color: var(--alerta); }
 .pago-pagado { background: var(--ok-fondo); color: var(--ok); }
 .pago-pendiente, .pago-por_verificar { background: #fff4e5; color: #b54708; }

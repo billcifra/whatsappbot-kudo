@@ -253,8 +253,12 @@ def router_panel(obtener: Callable[[], "Servicio"]) -> APIRouter:
     @router.get("/conversaciones", response_class=HTMLResponse)
     async def conversaciones(request: Request, svc: "Servicio" = Depends(servicio_activo),
                              sesion=Depends(exigir_sesion)):
+        # Los números del equipo también aparecen (para ver sus pruebas), marcados como "Equipo".
+        # En Prospectos y en el CSV siguen excluidos.
         personal = set(svc.s.numeros_personal)
-        filas = [c for c in svc.store.conversaciones(300) if c["wa_id"] not in personal]
+        filas = svc.store.conversaciones(300)
+        for c in filas:
+            c["es_equipo"] = c["wa_id"] in personal
         return render(svc, "conversaciones.html", request, sesion, seccion="conversaciones", auto_refrescar=True,
                       conversaciones=filas)
 
@@ -269,7 +273,8 @@ def router_panel(obtener: Callable[[], "Servicio"]) -> APIRouter:
                       contacto=contacto, mensajes=svc.store.mensajes_de(wa_id, 300),
                       pausa=svc.store.pausa_de(wa_id), en_ventana=svc.dentro_de_ventana(wa_id),
                       solicitudes=svc.store.solicitudes_de(wa_id), horas_pausa=svc.s.pausa_respuesta_horas,
-                      disciplina_cat=metricas.disciplina(contacto["disciplina"]))
+                      disciplina_cat=metricas.disciplina(contacto["disciplina"]),
+                      es_equipo=wa_id in svc.s.numeros_personal)
 
     @router.post("/conversaciones/{wa_id}/responder")
     async def responder(wa_id: str, svc: "Servicio" = Depends(servicio_activo), post=Depends(exigir_post)):
