@@ -27,7 +27,9 @@ python scripts/importar_sheets.py --simular # prueba la importación del histór
 python -m app.panel.usuarios crear ana      # usuarios del panel
 ```
 
-Producción: **Railway**, que construye con el `Dockerfile` (según `railway.json`, con healthcheck en `/salud`). Corre uvicorn en un solo proceso. La base está en un
+Producción: **Railway**, proyecto `trustworthy-growth`, servicio `whatsappbot-kudo`. Despliega en cada push a `master`.
+La configuración del servicio está en `.railway/railway.ts` (IaC): Dockerfile, healthcheck en `/salud` y volumen `/data`.
+Se cambia con `railway config plan`/`apply`; en Windows hay que usar la ruta a `railway.exe` (ver README). Corre uvicorn en un solo proceso. La base está en un
 Volume montado en `/data` (`DATA_DIR=/data`).
 
 ## Mapa del código (`app/`)
@@ -89,6 +91,7 @@ Todas las fechas se guardan en epoch y se muestran en `America/La_Paz`.
 - **Pruebas.** No hacen llamadas de red; usan los dobles de `tests/conftest.py` (`WhatsAppFalso`, `AgenteFalso`, `SheetsFalso`). Cada cambio de flujo lleva su prueba.
 - **Panel.** No lleva JavaScript ni recursos externos, por la CSP `default-src 'self'`. Los gráficos son SVG generados en `graficos.py` y estilizados con las clases `g-*`.
 - **Secretos.** Nunca subir `.env` ni `credentials.json`. Las variables están en `.env.example`.
+- **IaC de Railway.** No quitar de `.railway/railway.ts` el volumen ni su montaje en `/data`: `apply` lo desconectaría y el bot quedaría sin base. Revisar siempre `railway config plan` antes de `apply`.
 
 ## Variables de entorno
 

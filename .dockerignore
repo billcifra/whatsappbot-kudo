@@ -13,3 +13,7 @@ data/
 Pruebas/
 tests/
 *.csv
+node_modules/
+.railway/
+package.json
+package-lock.json

@@ -29,8 +29,11 @@ uvicorn app.main:app --port 8000 --reload
 
 1. **Volume.** En el servicio del bot ve a *Settings → Volumes* y agrega un volumen montado en **`/data`**. Ahí vive la
    base SQLite (`/data/kudo.db`): sin volumen, los datos se pierden en cada deploy. El `Dockerfile` ya define `DATA_DIR=/data`.
-2. **Build.** `railway.json` le indica a Railway que use el `Dockerfile` y fija una réplica y el healthcheck en `/salud`.
-   Si la versión nueva no responde, Railway mantiene la anterior. Ya no hay `Procfile`.
+2. **Build y servicio.** Los define `.railway/railway.ts` (Infrastructure as Code de Railway):
+   - Dockerfile, una réplica y healthcheck en `/salud`: si la versión nueva no responde, Railway mantiene la anterior.
+   - El volumen `/data` y la política de reinicio.
+   - Variables y Redis quedan fuera (`variables: { managed: false }`).
+   Ver la sección *Configuración del servicio (IaC)* más abajo.
 3. **Puerto.** Uvicorn escucha en `$PORT`, que Railway define, o en 8000 si no hay `$PORT`. Si el dominio público apuntaba
    fijo al puerto 8000, revisa en *Settings → Networking* que coincida con el puerto donde escucha la app.
 4. **Variables** (*Variables*). Además de las que ya existían:
@@ -55,6 +58,27 @@ uvicorn app.main:app --port 8000 --reload
    - Escríbele al bot desde un número de prueba.
    - Entra a `https://<tu-dominio>/panel`.
 
+## Configuración del servicio (IaC)
+
+La configuración del servicio en Railway vive en `.railway/railway.ts`.
+
+**Cómo cambiarla:**
+1. Instala el SDK con `npm install` (versión fijada en `package.json`).
+2. Edita `.railway/railway.ts`.
+3. Revisa con `railway config plan`. No debe aparecer nada destructivo.
+4. Aplica con `railway config apply`.
+
+**Cuidados:**
+- **El volumen.** `volume("whatsappbot-kudo-volume")` y `volumeMounts: { "/data": datos }` deben quedarse en `railway.ts`. Si se quitan, `apply` desconecta la base del servicio. Por defecto, `apply` se niega a aplicar cambios destructivos; no uses `--confirm-destructive` sin revisar el plan.
+- **Windows.** El SDK ejecuta la CLI desde la variable `_`. En Git Bash o PowerShell, `_` no apunta a `railway.exe` y el SDK falla con *"requires Railway CLI 5.42.1 or newer"*. Hay que llamar al ejecutable real:
+  ```bash
+  R="$APPDATA/npm/node_modules/@railway/cli/bin/railway.exe"
+  env _="$R" "$R" config plan
+  ```
+  ```powershell
+  $env:_ = "$env:APPDATA\npm\node_modules\@railway\cli\bin\railway.exe"; & $env:_ config plan
+  ```
+
 ## Estructura
 
 ```
@@ -63,5 +87,6 @@ app/            código del bot (ver CLAUDE.md)
 scripts/        simular.py (chat por terminal), inspeccionar_db.py, importar_sheets.py
 tests/          pruebas con pytest (sin red)
 Dockerfile      imagen para Railway
-railway.json    build con Dockerfile, 1 réplica, healthcheck /salud
+.railway/       railway.ts: servicio en Railway como código (Dockerfile, healthcheck, volumen /data)
+package.json    solo el SDK de IaC de Railway (para railway config plan/apply)
 ```

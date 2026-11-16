@@ -42,3 +42,6 @@ data/
 *.db
 *.db-wal
 *.db-shm
+
+# Node (solo para el SDK de IaC de Railway: railway config plan/apply)
+node_modules/
