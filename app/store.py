@@ -107,9 +107,12 @@ CREATE TABLE IF NOT EXISTS meta (
 
 # Columnas agregadas después del esquema original: (tabla, columna, definición).
 # Se aplican con ALTER TABLE solo si faltan, para no romper bases ya desplegadas.
-COLUMNAS_NUEVAS: list[tuple[str, str, str]] = []
+COLUMNAS_NUEVAS: list[tuple[str, str, str]] = [
+    ("contactos", "edad", "TEXT"),     # edad (texto libre) del alumno; sobre todo niños y jóvenes
+    ("contactos", "evento", "TEXT"),   # EVENTO_ID del evento temporal que le interesó (p. ej. curso vacacional)
+]
 
-CAMPOS_PERFIL = ("nombre", "disciplina", "turno", "dia")
+CAMPOS_PERFIL = ("nombre", "disciplina", "turno", "dia", "edad", "evento")
 
 
 class Store:
@@ -212,7 +215,7 @@ class Store:
         self._ejecutar("UPDATE contactos SET tema = ? WHERE wa_id = ?", (tema, wa_id))
 
     def actualizar_perfil(self, wa_id: str, **datos: str) -> dict[str, Any]:
-        """Guarda solo los campos con valor (nombre, disciplina, turno, dia). Devuelve el contacto."""
+        """Guarda solo los campos con valor (CAMPOS_PERFIL). Devuelve el contacto."""
         cambios = {k: v.strip() for k, v in datos.items() if k in CAMPOS_PERFIL and v and v.strip()}
         if self.contacto(wa_id) is None:
             self.registrar_entrante(wa_id, None)

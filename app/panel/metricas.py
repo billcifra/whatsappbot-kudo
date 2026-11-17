@@ -6,6 +6,7 @@ noche"…): se agrupan en categorías fijas para poder contarlas.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from collections import Counter
 from datetime import date, datetime, timedelta
@@ -57,6 +58,25 @@ def turno(texto: str | None) -> str | None:
 
 def dia(texto: str | None) -> str | None:
     return _categoria(texto, _CLAVES_DIA, "Otro")
+
+
+GRUPOS_EDAD = ["Infantil", "Juvenil", "Otro"]
+
+
+def grupo_edad(texto: str | None) -> str | None:
+    """Grupo del curso vacacional según la edad en texto libre ('9 años', 'tiene 14'):
+    Infantil (7–12), Juvenil (13–17) u Otro. None si no hay edad."""
+    if not texto or not texto.strip():
+        return None
+    numero = re.search(r"\d+", texto)
+    if not numero:
+        return "Otro"
+    edad = int(numero.group())
+    if 7 <= edad <= 12:
+        return "Infantil"
+    if 13 <= edad <= 17:
+        return "Juvenil"
+    return "Otro"
 
 
 def conteo(valores: list[str | None], orden: list[str]) -> list[tuple[str, int]]:

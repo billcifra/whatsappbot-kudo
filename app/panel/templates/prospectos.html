@@ -19,13 +19,21 @@
       {% for d in disciplinas %}<option value="{{ d }}" {{ 'selected' if d == disciplina }}>{{ d }}</option>{% endfor %}
     </select>
   </label>
+  {% if eventos %}
+  <label>Evento
+    <select name="evento">
+      <option value="">Todos</option>
+      {% for id, nombre in eventos %}<option value="{{ id }}" {{ 'selected' if id == evento }}>{{ nombre }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
   <button type="submit">Filtrar</button>
 </form>
 
 <section class="tarjeta">
   {% if prospectos %}
   <table>
-    <thead><tr><th>Contacto</th><th>Disciplina</th><th>Turno</th><th>Día</th><th>Primer contacto</th><th>Último mensaje</th><th>Msjs</th></tr></thead>
+    <thead><tr><th>Contacto</th><th>Disciplina</th><th>Turno</th><th>Día</th><th>Edad</th><th>Primer contacto</th><th>Último mensaje</th><th>Msjs</th></tr></thead>
     <tbody>
     {% for p in prospectos %}
       <tr>
@@ -35,6 +43,8 @@
         <td>{{ p.disciplina or '—' }}</td>
         <td>{{ p.turno or '—' }}</td>
         <td>{{ p.dia or '—' }}</td>
+        <td>{{ p.edad or '—' }}{% if p.grupo and p.grupo != 'Otro' %}<br><span class="suave">{{ p.grupo }}</span>{% endif %}
+          {% if p.evento %}<br><span class="estado" title="Interesado en el evento">{{ p.evento_nombre }}</span>{% endif %}</td>
         <td>{{ p.primer_contacto|fecha_corta }}</td>
         <td>{{ p.ultimo_mensaje|fecha_corta }}</td>
         <td>{{ p.mensajes }}</td>

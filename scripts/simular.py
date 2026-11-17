@@ -22,6 +22,7 @@ sys.path.insert(0, str(RAIZ))
 
 from app.agente import AgenteKudo  # noqa: E402
 from app.config import cargar_settings  # noqa: E402
+from app.contenido import MENU_ROWS  # noqa: E402
 from app.main import Servicio  # noqa: E402
 from app.sheets import Sheets  # noqa: E402
 from app.store import Store  # noqa: E402
@@ -40,9 +41,9 @@ class WhatsAppConsola:
         print(f"\n[{quien} → {para}]\n{texto}")
         return True
 
-    async def enviar_menu(self, para, cuerpo=""):
-        print("\n[BOT] (menú interactivo: Horarios · Precios · Disciplinas · Inscripción · Ubicación · "
-              "¿Qué es Kudo? · Venta de Guantes)")
+    async def enviar_menu(self, para, cuerpo="", filas=None):
+        titulos = " · ".join(f"{f['id']}. {f['title']}" for f in (filas or MENU_ROWS))
+        print(f"\n[BOT] (menú interactivo: {titulos})")
         return True
 
     async def marcar_leido_y_escribiendo(self, msg_id):
@@ -90,7 +91,7 @@ async def principal(mensajes: list[str], nuevo: bool) -> None:
             if texto:
                 await mandar(texto)
     c = store.contacto(TELEFONO) or {}
-    print("\nPerfil guardado:", {k: c.get(k) for k in ("nombre", "disciplina", "turno", "dia")})
+    print("\nPerfil guardado:", {k: c.get(k) for k in ("nombre", "disciplina", "turno", "dia", "edad", "evento")})
     print("Consumo:", store.resumen_consumo(0))
 
 

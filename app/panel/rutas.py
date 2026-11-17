@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from ..contenido import TITULO_OPCION
+from ..contenido import EVENTO_ID, EVENTO_NOMBRE, TITULO_OPCION
 from . import auth, graficos, metricas
 
 if TYPE_CHECKING:
@@ -207,44 +207,60 @@ def router_panel(obtener: Callable[[], "Servicio"]) -> APIRouter:
         )
 
     # --- Prospectos ---------------------------------------------------------------
-    def filtrar_prospectos(svc: "Servicio", dias: str, disciplina: str) -> tuple[list[dict], int, str]:
+    def nombre_evento(evento_id: str | None) -> str:
+        """Nombre legible del evento vigente; los eventos pasados se muestran por su id."""
+        if not evento_id:
+            return ""
+        return EVENTO_NOMBRE if evento_id == EVENTO_ID else evento_id
+
+    def filtrar_prospectos(svc: "Servicio", dias: str, disciplina: str,
+                           evento: str = "") -> tuple[list[dict], int, str, str, list[tuple[str, str]]]:
+        """Prospectos filtrados. Devuelve también los eventos disponibles como (id, nombre) para el filtro."""
         n = int(dias) if dias.isdigit() and int(dias) in PERIODOS else 0
         disciplina = disciplina if disciplina in metricas.DISCIPLINAS else ""
         desde = metricas.inicio_de(svc.ahora().date() - timedelta(days=n - 1), zona(svc)) if n else 0
-        filas = []
+        filas, ids_eventos = [], {EVENTO_ID} if EVENTO_ID else set()
         for p in svc.store.prospectos(desde):
             if p["wa_id"] in svc.s.numeros_personal:
                 continue
+            if p["evento"]:
+                ids_eventos.add(p["evento"])
             p["disciplina_cat"] = metricas.disciplina(p["disciplina"]) or ""
-            if disciplina and p["disciplina_cat"] != disciplina:
-                continue
+            p["grupo"] = metricas.grupo_edad(p["edad"]) or ""
+            p["evento_nombre"] = nombre_evento(p["evento"])
             filas.append(p)
-        return filas, n, disciplina
+        evento = evento if evento in ids_eventos else ""
+        filas = [p for p in filas if (not disciplina or p["disciplina_cat"] == disciplina)
+                 and (not evento or p["evento"] == evento)]
+        eventos = [(e, nombre_evento(e)) for e in sorted(ids_eventos)]
+        return filas, n, disciplina, evento, eventos
 
     @router.get("/prospectos", response_class=HTMLResponse)
-    async def prospectos(request: Request, dias: str = "", disciplina: str = "",
+    async def prospectos(request: Request, dias: str = "", disciplina: str = "", evento: str = "",
                          svc: "Servicio" = Depends(servicio_activo), sesion=Depends(exigir_sesion)):
-        filas, n, disciplina = filtrar_prospectos(svc, dias, disciplina)
-        consulta = urlencode({k: v for k, v in (("dias", str(n) if n else ""), ("disciplina", disciplina)) if v})
+        filas, n, disciplina, evento, eventos = filtrar_prospectos(svc, dias, disciplina, evento)
+        consulta = urlencode({k: v for k, v in (("dias", str(n) if n else ""), ("disciplina", disciplina),
+                                                ("evento", evento)) if v})
         return render(svc, "prospectos.html", request, sesion, seccion="prospectos", prospectos=filas,
                       dias=n, disciplina=disciplina, periodos=PERIODOS, disciplinas=metricas.DISCIPLINAS,
-                      consulta=consulta)
+                      evento=evento, eventos=eventos, consulta=consulta)
 
     @router.get("/prospectos.csv")
-    async def prospectos_csv(dias: str = "", disciplina: str = "", svc: "Servicio" = Depends(servicio_activo),
-                             sesion=Depends(exigir_sesion)):
-        filas, _, _ = filtrar_prospectos(svc, dias, disciplina)
+    async def prospectos_csv(dias: str = "", disciplina: str = "", evento: str = "",
+                             svc: "Servicio" = Depends(servicio_activo), sesion=Depends(exigir_sesion)):
+        filas, _, _, _, _ = filtrar_prospectos(svc, dias, disciplina, evento)
         z = zona(svc)
         fmt = lambda ts: datetime.fromtimestamp(ts, z).strftime("%Y-%m-%d %H:%M") if ts else ""  # noqa: E731
         salida = io.StringIO()
         w = csv.writer(salida)
         w.writerow(["telefono", "nombre", "nombre_whatsapp", "disciplina", "disciplina_categoria", "turno", "dia",
-                    "primer_contacto", "ultimo_mensaje", "mensajes", "solicitudes_humano", "whatsapp"])
+                    "primer_contacto", "ultimo_mensaje", "mensajes", "solicitudes_humano", "whatsapp",
+                    "edad", "grupo", "evento"])
         for p in filas:
             w.writerow([_celda_csv(v) for v in (
                 p["wa_id"], p["nombre"], p["nombre_perfil"], p["disciplina"], p["disciplina_cat"], p["turno"],
                 p["dia"], fmt(p["primer_contacto"]), fmt(p["ultimo_mensaje"]), p["mensajes"], p["solicitudes"],
-                f"https://wa.me/{p['wa_id']}")])
+                f"https://wa.me/{p['wa_id']}", p["edad"], p["grupo"], p["evento"])])
         nombre = f"prospectos-{svc.ahora().strftime('%Y%m%d')}.csv"
         return Response("﻿" + salida.getvalue(), media_type="text/csv; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
@@ -274,6 +290,8 @@ def router_panel(obtener: Callable[[], "Servicio"]) -> APIRouter:
                       pausa=svc.store.pausa_de(wa_id), en_ventana=svc.dentro_de_ventana(wa_id),
                       solicitudes=svc.store.solicitudes_de(wa_id), horas_pausa=svc.s.pausa_respuesta_horas,
                       disciplina_cat=metricas.disciplina(contacto["disciplina"]),
+                      grupo=metricas.grupo_edad(contacto["edad"]),
+                      evento_nombre=nombre_evento(contacto["evento"]),
                       es_equipo=wa_id in svc.s.numeros_personal)
 
     @router.post("/conversaciones/{wa_id}/responder")

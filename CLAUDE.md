@@ -6,7 +6,7 @@ Guía para Claude Code (claude.ai/code) al trabajar en este repositorio.
 
 Bot de WhatsApp de **KUDO Bolivia** (dojo de artes marciales en La Paz). Recibe mensajes por el webhook de la
 WhatsApp Cloud API (Meta) y responde con:
-- respuestas fijas (menú 1–7, también como lista interactiva);
+- respuestas fijas (menú 1–7, también como lista interactiva; más la opción 8 mientras haya un evento vigente);
 - un agente de OpenAI (Agents SDK, `gpt-4.1`) que lleva el embudo del prospecto: nombre → disciplina → turno → día.
 
 Tiene un **panel web** en `/panel` con métricas, prospectos (exportables a CSV), conversaciones, pausa del bot y
@@ -39,7 +39,7 @@ Volume montado en `/data` (`DATA_DIR=/data`).
 | `main.py` | `crear_app()` (FastAPI, lifespan, `/webhook`, `/salud`) y `Servicio`, con todo el flujo de mensajes y las acciones de las herramientas y del panel |
 | `config.py` | `Settings` desde el entorno o `.env` (`cargar_settings`) |
 | `store.py` | SQLite: esquema, `COLUMNAS_NUEVAS` para migraciones aditivas, todas las consultas |
-| `contenido.py` | Menú 1–7 (`respuestas_directas`, `MENU_ROWS`), bienvenida, `FERIADOS`, evento temporal (`EVENTO_*`) |
+| `contenido.py` | Menú 1–7 (`respuestas_directas`, `MENU_ROWS`), bienvenida, `FERIADOS`, evento temporal (`EVENTO_*`, opción 8: `FILA_MENU_EVENTO`/`RESPUESTA_EVENTO`; `evento_vigente`, `menu_rows`, `respuesta_directa`) |
 | `prompts.py` | `SYSTEM_PROMPT` del agente; los horarios están aquí **y** en el menú de `contenido.py` |
 | `agente.py` | Herramientas `solicitar_asistencia_humana` y `guardar_datos_prospecto`, `AgenteKudo`, `build_agent_input` |
 | `whatsapp.py` | Cliente async (httpx), firma `X-Hub-Signature-256`, `extraer_mensajes` |
@@ -61,7 +61,8 @@ Volume montado en `/data` (`DATA_DIR=/data`).
    - audio, que se transcribe;
    - cualquier otro tipo recibe una respuesta amable.
 5. Si el usuario es nuevo (`bienvenido=0`), recibe la bienvenida.
-6. Si escribe o toca `"1"`–`"7"`, se envían los mensajes fijos y el menú.
+6. Si escribe o toca `"1"`–`"7"` (o `"8"` mientras el evento esté vigente), se envían los mensajes fijos y el menú.
+   La opción 8 marca `evento` en el contacto.
 7. Lo demás va al agente.
    - Antes de correrlo se guarda el mensaje.
    - Si la respuesta termina en `[[MENU]]`, se envía también el menú interactivo.
@@ -73,7 +74,7 @@ Las herramientas reciben el número por `RunContextWrapper[ContextoAgente]`, no 
 
 | Tabla | Contenido |
 |---|---|
-| `contactos` | Perfil del embudo, `bienvenido`, `primer_contacto`, `ultimo_mensaje` (último mensaje **del cliente**, para la ventana de 24 h) |
+| `contactos` | Perfil del embudo (nombre, disciplina, turno, día, `edad`, `evento`), `bienvenido`, `primer_contacto`, `ultimo_mensaje` (último mensaje **del cliente**, para la ventana de 24 h) |
 | `mensajes` | Historial. `rol` user/assistant/staff; `tipo` text/audio/menu/otro/bienvenida; `para_agente` indica qué ve el agente (el menú y lo no soportado no) |
 | `eventos` | Para las métricas: nuevo_usuario, menu, agente, datos_prospecto, solicitud_humana, no_soportado |
 | `solicitudes_humano` | Solicitudes de atención humana; se marcan como atendidas desde el panel |
@@ -89,6 +90,7 @@ Todas las fechas se guardan en epoch y se muestran en `America/La_Paz`.
 - **Un solo proceso.** No subir `--workers` ni agregar réplicas en Railway: SQLite y los locks por cliente viven en memoria.
 - **Cambios de esquema.** Solo aditivos. Una columna nueva va en `COLUMNAS_NUEVAS`; no se reescriben tablas que ya están desplegadas.
 - **Horarios y precios.** Si cambian, actualizar `prompts.py` **y** `contenido.py`.
+- **Eventos temporales** (camps, cursos vacacionales). Todo va en `contenido.py`: `EVENTO_ID`, `EVENTO_NOMBRE`, `EVENTO_DESDE`, `EVENTO_PROMO_HASTA`, `EVENTO_TEASER`, `EVENTO_INFO`, `EVENTO_INSTRUCCIONES`, `FILA_MENU_EVENTO` y `RESPUESTA_EVENTO`. Mientras `hoy <= EVENTO_PROMO_HASTA` aparecen el teaser de bienvenida, el bloque `EVENTO_VIGENTE` del agente y la opción 8; después desaparecen solos. Los interesados quedan con `contactos.evento = EVENTO_ID` (filtro "Evento" en Prospectos). Cada evento nuevo lleva un `EVENTO_ID` nuevo.
 - **Pruebas.** No hacen llamadas de red; usan los dobles de `tests/conftest.py` (`WhatsAppFalso`, `AgenteFalso`, `SheetsFalso`). Cada cambio de flujo lleva su prueba.
 - **Panel.** No lleva JavaScript ni recursos externos, por la CSP `default-src 'self'`. Los gráficos son SVG generados en `graficos.py` y estilizados con las clases `g-*`.
 - **Secretos.** Nunca subir `.env` ni `credentials.json`. Las variables están en `.env.example`.

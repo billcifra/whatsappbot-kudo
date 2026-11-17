@@ -27,6 +27,8 @@
       <dt>Disciplina</dt><dd>{{ contacto.disciplina or '—' }}{% if disciplina_cat and disciplina_cat != contacto.disciplina %} <span class="suave">({{ disciplina_cat }})</span>{% endif %}</dd>
       <dt>Turno</dt><dd>{{ contacto.turno or '—' }}</dd>
       <dt>Día</dt><dd>{{ contacto.dia or '—' }}</dd>
+      <dt>Edad</dt><dd>{{ contacto.edad or '—' }}{% if grupo and grupo != 'Otro' %} <span class="suave">({{ grupo }})</span>{% endif %}</dd>
+      {% if contacto.evento %}<dt>Evento</dt><dd>{{ evento_nombre }}</dd>{% endif %}
       <dt>Primer contacto</dt><dd>{{ contacto.primer_contacto|fecha }}</dd>
       <dt>Último mensaje</dt><dd>{{ contacto.ultimo_mensaje|fecha }}</dd>
     </dl>

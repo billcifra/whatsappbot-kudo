@@ -7,7 +7,7 @@ Flujo de un mensaje (Servicio.procesar):
   → texto / opción tocada / nota de voz (Whisper); otros tipos reciben una respuesta amable
   → bot en pausa para ese número → solo se guarda el mensaje
   → usuario nuevo → bienvenida
-  → "1"-"7" → respuesta fija en mensajes cortos + menú interactivo
+  → "1"-"7" (y "8" mientras haya evento vigente) → respuesta fija en mensajes cortos + menú interactivo
   → lo demás → agente de OpenAI con historial y perfil; [[MENU]] al final → menú interactivo
 """
 
@@ -29,13 +29,16 @@ from fastapi.responses import PlainTextResponse
 from .agente import AgenteKudo, Respuesta, build_agent_input
 from .config import Settings, cargar_settings
 from .importacion_sheets import MARCA as MARCA_IMPORTACION, importar
-from .contenido import AUDIO_NO_ENTENDIDO, FALLA_AGENTE, TIPO_NO_SOPORTADO, TITULO_OPCION, construir_bienvenida, respuestas_directas
+from .contenido import (AUDIO_NO_ENTENDIDO, EVENTO_ID, EVENTO_NOMBRE, FALLA_AGENTE, FILA_MENU_EVENTO,
+                        TIPO_NO_SOPORTADO, TITULO_OPCION, construir_bienvenida, evento_vigente, menu_rows,
+                        respuesta_directa)
 from .migracion import MARCA as MARCA_MIGRACION, conectar_redis, migrar_desde_redis
 from .panel import montar_panel
 from .panel.auth import CLAVE_MIN, hash_clave
+from .panel.metricas import grupo_edad
 from .panel.usuarios import USUARIO_VALIDO
 from .sheets import INTERESADOS, SOLICITUDES, Sheets
-from .store import Store
+from .store import CAMPOS_PERFIL, Store
 from .transcripcion import Transcriptor
 from .whatsapp import MensajeEntrante, WhatsAppClient, extraer_mensajes, firma_valida
 
@@ -68,6 +71,9 @@ class Servicio:
     def fecha_registro(self) -> str:
         return self.ahora().strftime("%Y-%m-%d %H:%M:%S")
 
+    def hoy(self) -> str:
+        return self.ahora().strftime("%Y-%m-%d")
+
     @staticmethod
     def inicio_dia(momento: datetime) -> float:
         return momento.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
@@ -82,6 +88,10 @@ class Servicio:
         ok = await self.wa.enviar_texto(wa_id, texto)
         self.store.agregar_mensaje(wa_id, "assistant", texto, tipo=tipo, para_agente=para_agente)
         return ok
+
+    async def _menu(self, wa_id: str) -> None:
+        """Menú interactivo; incluye la opción del evento mientras esté vigente."""
+        await self.wa.enviar_menu(wa_id, filas=menu_rows(self.hoy()))
 
     # --- Flujo principal -----------------------------------------------------------------
     async def procesar(self, msg: MensajeEntrante) -> None:
@@ -142,10 +152,11 @@ class Servicio:
             await self._bienvenida(wa_id, texto, tipo)
             return
 
-        # --- Opciones directas del menú (1-7, escritas o tocadas) ---
+        # --- Opciones directas del menú (1-7, y 8 si hay evento; escritas o tocadas) ---
         clave = texto.strip()
-        if clave in respuestas_directas:
-            await self._opcion_menu(wa_id, clave, texto, previo)
+        chunks = respuesta_directa(clave, self.hoy())
+        if chunks is not None:
+            await self._opcion_menu(wa_id, clave, texto, previo, chunks)
             return
 
         # --- Todo lo demás va al agente IA, con historial y perfil del prospecto ---
@@ -158,20 +169,24 @@ class Servicio:
         # El primer mensaje no entra al historial del agente (igual que antes); la bienvenida sí,
         # para que el agente sepa que ya saludó y pidió el nombre.
         self.store.agregar_mensaje(wa_id, "user", texto, tipo=tipo, para_agente=False)
-        await self._enviar(wa_id, construir_bienvenida(self.ahora().strftime("%Y-%m-%d")), tipo="bienvenida")
+        await self._enviar(wa_id, construir_bienvenida(self.hoy()), tipo="bienvenida")
 
-    async def _opcion_menu(self, wa_id: str, clave: str, texto: str, contacto: dict[str, Any]) -> None:
+    async def _opcion_menu(self, wa_id: str, clave: str, texto: str, contacto: dict[str, Any],
+                           chunks: list[str]) -> None:
         self.store.poner_tema(wa_id, clave)
         self.store.registrar_evento(wa_id, "menu", clave)
         self.store.agregar_mensaje(wa_id, "user", f"{texto} · {TITULO_OPCION.get(clave, '')}", tipo="menu",
                                    para_agente=False)
+        if clave == FILA_MENU_EVENTO["id"]:
+            # Tocar la opción del evento ya es una señal de interés: queda marcado para el panel.
+            self.store.actualizar_perfil(wa_id, evento=EVENTO_ID)
         nombre = contacto.get("nombre")
         # Respuestas partidas en mensajes cortos; el saludo va solo en el primero.
-        for i, chunk in enumerate(respuestas_directas[clave]):
+        for i, chunk in enumerate(chunks):
             if i == 0 and nombre:
                 chunk = f"¡Hola, {nombre}! 😊\n\n{chunk}"
             await self._enviar(wa_id, chunk, tipo="menu", para_agente=False)
-        await self.wa.enviar_menu(wa_id)
+        await self._menu(wa_id)
 
     async def _agente(self, wa_id: str, texto: str, tipo: str) -> None:
         # El mensaje se guarda ANTES de correr el agente: el historial lo incluye, como antes.
@@ -184,7 +199,7 @@ class Servicio:
             log.exception("Falló el agente para %s; se envía la respuesta de respaldo", wa_id)
             # Respuesta de respaldo: no se deja al cliente sin contestar; el menú no depende de la IA.
             await self._enviar(wa_id, FALLA_AGENTE, tipo="otro", para_agente=False)
-            await self.wa.enviar_menu(wa_id)
+            await self._menu(wa_id)
             return
         costo = (r.entrada * self.s.precio_entrada_usd_m + r.salida * self.s.precio_salida_usd_m) / 1_000_000
         self.store.registrar_consumo(wa_id, r.entrada, r.salida, costo)
@@ -201,7 +216,7 @@ class Servicio:
         if respuesta:
             await self._enviar(wa_id, respuesta)
         if mostrar_menu:
-            await self.wa.enviar_menu(wa_id)
+            await self._menu(wa_id)
 
     # --- Acciones de las herramientas del agente ---------------------------------------------
     async def solicitar_humano(self, wa_id: str, mensaje: str) -> None:
@@ -215,12 +230,18 @@ class Servicio:
         historial_txt = "\n".join(
             f"  {'Cliente' if it['role'] == 'user' else 'Bot'}: {it['content'][:120]}" for it in ultimos
         ) or "  (sin historial)"
+        extra = ""
+        if c.get("edad") or c.get("evento"):
+            grupo = grupo_edad(c.get("edad"))
+            extra = (f"🧒 Edad: {c.get('edad') or '-'}{f' ({grupo})' if grupo and grupo != 'Otro' else ''}"
+                     f"{' | ☀️ Interesado en el ' + EVENTO_NOMBRE.lower() if c.get('evento') == EVENTO_ID else ''}\n")
         aviso = (
             "📩 *Solicitud de atención humana*\n"
             f"👤 Nombre: {c.get('nombre') or c.get('nombre_perfil') or '(desconocido)'}\n"
             f"📱 Teléfono: {wa_id}\n"
             f"💬 Chatear: https://wa.me/{wa_id}\n"
-            f"🥋 Interés: {c.get('disciplina') or '-'} | Turno: {c.get('turno') or '-'} | Día: {c.get('dia') or '-'}\n\n"
+            f"🥋 Interés: {c.get('disciplina') or '-'} | Turno: {c.get('turno') or '-'} | Día: {c.get('dia') or '-'}\n"
+            f"{extra}\n"
             f"✉️ Último mensaje del cliente:\n{mensaje}\n\n"
             f"🧵 Conversación reciente:\n{historial_txt}"
         )
@@ -229,12 +250,17 @@ class Servicio:
         if self.s.pausa_derivacion_horas > 0:
             self.store.pausar(wa_id, self.s.pausa_derivacion_horas, "pidió atención humana")
 
-    def guardar_prospecto(self, wa_id: str, **datos: str) -> None:
+    def guardar_prospecto(self, wa_id: str, interes_evento: bool = False, **datos: str) -> None:
+        """Datos del embudo que entrega el agente. Con `interes_evento` marca el evento vigente (si lo hay)."""
+        if interes_evento and evento_vigente(self.hoy()):
+            datos["evento"] = EVENTO_ID
         c = self.store.actualizar_perfil(wa_id, **datos)
-        perfil = {k: c.get(k) or "" for k in ("nombre", "disciplina", "turno", "dia")}
+        perfil = {k: c.get(k) or "" for k in CAMPOS_PERFIL}
         self.store.registrar_evento(wa_id, "datos_prospecto", perfil)
+        # edad y evento van al final para no mover las columnas que ya tiene la hoja.
         self.sheets.anotar(INTERESADOS, [wa_id, "[DATOS PROSPECTO]", self.fecha_registro(), perfil["nombre"],
-                                         perfil["disciplina"], perfil["turno"], perfil["dia"]])
+                                         perfil["disciplina"], perfil["turno"], perfil["dia"], perfil["edad"],
+                                         perfil["evento"]])
 
     # --- Acciones del panel ----------------------------------------------------------------
     async def responder_como_persona(self, wa_id: str, texto: str, usuario: str) -> bool:

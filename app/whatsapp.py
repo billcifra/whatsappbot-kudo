@@ -87,8 +87,9 @@ class WhatsAppClient:
         return await self._post("Envío WhatsApp", {
             "messaging_product": "whatsapp", "to": para, "type": "text", "text": {"body": texto}})
 
-    async def enviar_menu(self, para: str, cuerpo: str = MENU_BODY) -> bool:
-        """Menú principal como lista interactiva: al tocar una fila, Meta reenvía su `id` (1-7)."""
+    async def enviar_menu(self, para: str, cuerpo: str = MENU_BODY, filas: list[dict[str, str]] | None = None) -> bool:
+        """Menú principal como lista interactiva: al tocar una fila, Meta reenvía su `id` (1-7, u 8 si hay
+        evento). `filas` permite agregar la opción del evento vigente (ver contenido.menu_rows)."""
         return await self._post("Menú WhatsApp", {
             "messaging_product": "whatsapp", "to": para, "type": "interactive",
             "interactive": {
@@ -96,7 +97,7 @@ class WhatsAppClient:
                 "header": {"type": "text", "text": "KUDO Bolivia 🥋"},
                 "body": {"text": cuerpo},
                 "footer": {"text": "Tu primera clase es GRATIS 🎁"},
-                "action": {"button": "Ver opciones", "sections": [{"title": "Información", "rows": MENU_ROWS}]},
+                "action": {"button": "Ver opciones", "sections": [{"title": "Información", "rows": filas or MENU_ROWS}]},
             },
         })
 

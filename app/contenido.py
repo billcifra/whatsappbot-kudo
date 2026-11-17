@@ -1,4 +1,4 @@
-"""Contenido fijo del bot: menú 1-7, bienvenida, feriados y evento temporal vigente.
+"""Contenido fijo del bot: menú 1-7 (+8 del evento), bienvenida, feriados y evento temporal vigente.
 
 Editar aquí los textos, horarios del menú, feriados o el evento del momento. Los horarios del
 agente viven en prompts.py: si cambian, actualizar AMBOS archivos.
@@ -11,21 +11,85 @@ agente viven en prompts.py: si cambian, actualizar AMBOS archivos.
 # El agente NO debe coordinar ni confirmar clases de prueba en estas fechas.
 # Formato: "YYYY-MM-DD": "motivo". Edita esta lista para agregar o quitar feriados.
 FERIADOS = {
-    "2026-06-04": "Feriado (jueves) — sin clases",
-    "2026-06-05": "Feriado (viernes) — sin clases",
-    "2026-06-22": "Feriado (lunes) — sin clases",
+    "2026-12-25": "Receso de fin de año (Navidad) — dojo cerrado",
+    "2026-12-26": "Receso de fin de año — dojo cerrado",
+    "2026-12-27": "Receso de fin de año — dojo cerrado",
+    "2026-12-28": "Receso de fin de año — dojo cerrado",
+    "2026-12-29": "Receso de fin de año — dojo cerrado",
+    "2026-12-30": "Receso de fin de año — dojo cerrado",
+    "2026-12-31": "Receso de fin de año — dojo cerrado",
+    "2027-01-01": "Receso de fin de año (Año Nuevo) — dojo cerrado",
 }
 
 # ---------------------------------------------
 # Evento temporal vigente (camps de vacaciones, promociones, etc.).
 # Se promociona automáticamente solo mientras hoy <= EVENTO_PROMO_HASTA;
-# después desaparece de las respuestas del bot sin tocar más código.
-# Para anunciar un evento nuevo, llena estas constantes; sin evento, déjalas en "".
+# después desaparece de las respuestas del bot (bienvenida, agente y opción 8 del menú)
+# sin tocar más código.
+# Para anunciar un evento nuevo, llena estas constantes y RESPUESTA_EVENTO / FILA_MENU_EVENTO;
+# sin evento, deja EVENTO_PROMO_HASTA en "".
 # ---------------------------------------------
-EVENTO_PROMO_HASTA = ""   # último día de promoción (YYYY-MM-DD); "" = sin evento
-EVENTO_TEASER = ""        # línea corta para el mensaje de bienvenida; terminar en "\n\n"
-EVENTO_INFO = ""          # descripción: nombre, fechas, horarios, precios
-EVENTO_INSTRUCCIONES = "" # instrucciones al agente sobre cómo responder/promocionarlo
+EVENTO_ID = "vacacional_2026_27"   # se guarda en contactos.evento; el panel filtra por él
+EVENTO_NOMBRE = "Curso vacacional"  # nombre corto para el panel
+EVENTO_DESDE = "2026-12-01"         # primer día del evento (para frasear "empieza"/"en curso")
+EVENTO_PROMO_HASTA = "2027-01-29"   # último día de promoción (YYYY-MM-DD); "" = sin evento
+EVENTO_TEASER = (                   # línea corta para el mensaje de bienvenida; terminar en "\n\n"
+    "☀️ *¡Curso vacacional de Kudo para niños y jóvenes (7 a 17 años)!* "
+    "Diciembre y enero, *Bs. 400 los dos meses*.\n\n"
+)
+EVENTO_INFO = (                     # descripción: nombre, fechas, horarios, precios
+    "CURSO VACACIONAL DE KUDO (arte marcial mixto japonés) — diciembre 2026 / enero 2027:\n"
+    "  • Fechas: martes 1 de diciembre de 2026 al viernes 29 de enero de 2027.\n"
+    "  • Días: lunes, miércoles y viernes.\n"
+    "  • Grupo INFANTIL (7 a 12 años): 9:30–10:30 (mañana) ó 15:30–16:30 (tarde).\n"
+    "  • Grupo JUVENIL (13 a 17 años): 8:30–9:30 (mañana) ó 14:30–15:30 (tarde).\n"
+    "  • Receso vacacional: del 25 de diciembre al 1 de enero (el dojo está cerrado esos días).\n"
+    "  • Promoción por vacaciones: Bs. 400 por los DOS meses (diciembre y enero).\n"
+    "  • Primera clase de prueba GRATIS, sin compromiso.\n"
+    "  • Lugar: Cañada Strongest N.º 1847, Edificio 'Sarawi' — Dojo 'KUDO' "
+    "(a media cuadra de la plaza del Estudiante).\n"
+    "  • Las clases regulares (Kudo niños, jóvenes y adultos, y BJJ) siguen con su horario normal.\n"
+)
+EVENTO_INSTRUCCIONES = (            # instrucciones al agente sobre cómo responder/promocionarlo
+    "INSTRUCCIONES sobre el curso vacacional:\n"
+    "  • Usa estos datos para responder cualquier pregunta sobre el curso vacacional / vacaciones / "
+    "curso de verano / clases para niños en diciembre o enero.\n"
+    "  • Antes de dar el horario, pregunta la EDAD del niño o joven para ubicarlo en el grupo "
+    "Infantil (7–12) o Juvenil (13–17), y da solo el horario de su grupo.\n"
+    "  • Cuando te den la edad o muestren interés en el curso, llama a `guardar_datos_prospecto` "
+    "con `edad` (tal como la dijeron) e `interes_evento=true`, junto con los demás datos que tengas.\n"
+    "  • Si la edad está fuera de 7 a 17 años, explica con amabilidad que el curso vacacional es "
+    "para 7 a 17 años y ofrécele las clases regulares (que siguen en diciembre y enero).\n"
+    "  • Menciónalo de forma proactiva (sin ser insistente) cuando hablen de niños o jóvenes, o "
+    "cuando ofrezcas el menú. Compara FECHA_HOY con el inicio (2026-12-01) para frasear: si aún no "
+    "empieza di que 'empieza el martes 1 de diciembre'; si ya está dentro de las fechas, di que "
+    "'está en curso'.\n"
+    "  • El curso vacacional TAMBIÉN tiene clase de prueba GRATIS, sin compromiso: invítalos a "
+    "venir a una clase del horario de su grupo (lunes, miércoles o viernes) y coordina el día como "
+    "cualquier clase de prueba (respetando el receso y los FERIADOS). Después de la prueba, el curso "
+    "cuesta Bs. 400 por diciembre y enero. Si preguntan por un precio que no figura aquí (por "
+    "ejemplo, entrar a mitad del curso o un solo mes), NO lo inventes: indica que lo consulten en "
+    "el dojo.\n"
+    "  • Para inscribirse: en el dojo, o usa `solicitar_asistencia_humana` si quieren que el "
+    "equipo los contacte para la inscripción.\n"
+    "  • En el menú interactivo, la opción 'Curso vacacional' muestra este curso.\n"
+)
+# Opción 8 del menú: solo aparece mientras el evento está vigente.
+FILA_MENU_EVENTO = {"id": "8", "title": "Curso vacacional", "description": "Kudo 7 a 17 años · dic–ene · Bs. 400"}
+RESPUESTA_EVENTO = [
+    "☀️ *Curso vacacional de Kudo* 🥋\n"
+    "📅 1 de diciembre al 29 de enero · Lun, Mié y Vie\n\n"
+    "📍 *Infantil (7 a 12 años)*\n"
+    "• 9:30–10:30 ó 15:30–16:30\n\n"
+    "📍 *Juvenil (13 a 17 años)*\n"
+    "• 8:30–9:30 ó 14:30–15:30\n\n"
+    "⛔ Receso: 25 de diciembre al 1 de enero.",
+
+    "💰 *Promoción por vacaciones:* Bs. *400* por diciembre y enero.\n"
+    "🎁 La *primera clase es GRATIS*, sin compromiso.\n"
+    "📍 Cañada Strongest N.º 1847, Ed. Sarawi — a media cuadra de la plaza del Estudiante.\n\n"
+    "👉 ¿Qué edad tiene tu hijo/a? Te digo su grupo y coordinamos su clase de prueba. 😊",
+]
 # --- Ejemplo (Winter Camp jul-2026), dejar comentado como plantilla: ---
 # EVENTO_PROMO_HASTA = "2026-07-17"
 # EVENTO_TEASER = (
@@ -170,7 +234,26 @@ FALLA_AGENTE = ("Disculpa, tuve un problema técnico 🙏 "
                 "Mientras lo resolvemos, toca una opción del menú 👇")
 
 # Nombre corto de cada opción del menú (para el historial y el panel).
-TITULO_OPCION = {fila["id"]: fila["title"] for fila in MENU_ROWS}
+TITULO_OPCION = {fila["id"]: fila["title"] for fila in [*MENU_ROWS, FILA_MENU_EVENTO]}
+
+
+def evento_vigente(hoy: str) -> bool:
+    """True mientras se promociona el evento temporal (`hoy` es 'YYYY-MM-DD' local)."""
+    return bool(EVENTO_PROMO_HASTA) and hoy <= EVENTO_PROMO_HASTA
+
+
+def menu_rows(hoy: str) -> list[dict[str, str]]:
+    """Filas del menú interactivo: las fijas y, si hay evento vigente, la opción 8."""
+    return [*MENU_ROWS, FILA_MENU_EVENTO] if evento_vigente(hoy) else list(MENU_ROWS)
+
+
+def respuesta_directa(clave: str, hoy: str) -> list[str] | None:
+    """Mensajes fijos de una opción del menú, o None si no es una opción disponible hoy."""
+    if clave in respuestas_directas:
+        return respuestas_directas[clave]
+    if clave == FILA_MENU_EVENTO["id"] and evento_vigente(hoy):
+        return RESPUESTA_EVENTO
+    return None
 
 
 # Mensajes de conversión para leads de publicidad
@@ -180,9 +263,7 @@ def construir_bienvenida(hoy: str) -> str:
     Si hay un evento temporal vigente (hoy <= EVENTO_PROMO_HASTA) añade su teaser
     corto; pasada la fecha (o sin evento configurado), el teaser desaparece solo.
     """
-    teaser = ""
-    if EVENTO_PROMO_HASTA and hoy <= EVENTO_PROMO_HASTA:
-        teaser = EVENTO_TEASER
+    teaser = EVENTO_TEASER if evento_vigente(hoy) else ""
     return (
         "¡Hola! 👋 Bienvenido/a a *KUDO Bolivia*, tu centro de artes marciales en La Paz.\n\n"
         f"{teaser}"

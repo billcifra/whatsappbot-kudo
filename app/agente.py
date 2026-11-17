@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from agents import Agent, RunContextWrapper, Runner, function_tool
 
-from .contenido import EVENTO_INFO, EVENTO_INSTRUCCIONES, EVENTO_PROMO_HASTA, FERIADOS
+from .contenido import EVENTO_ID, EVENTO_INFO, EVENTO_INSTRUCCIONES, EVENTO_NOMBRE, FERIADOS, evento_vigente
 from .prompts import SYSTEM_PROMPT
 
 if TYPE_CHECKING:
@@ -56,16 +56,22 @@ async def solicitar_asistencia_humana(ctx: RunContextWrapper[ContextoAgente], us
 
 @function_tool
 async def guardar_datos_prospecto(ctx: RunContextWrapper[ContextoAgente], nombre: str = "", disciplina: str = "",
-                                  turno: str = "", dia: str = "") -> str:
+                                  turno: str = "", dia: str = "", edad: str = "",
+                                  interes_evento: bool = False) -> str:
     """
-    Guarda en Google Sheets los datos del prospecto recolectados durante la conversación.
+    Guarda los datos del prospecto recolectados durante la conversación.
     Llama a esta herramienta CADA VEZ que el usuario te entregue uno de estos datos:
-    su nombre, la disciplina de interés, el turno preferido o el día que podría asistir.
+    su nombre, la disciplina de interés, el turno preferido, el día que podría asistir
+    o la edad del alumno (por ejemplo la edad del hijo/a).
     Puedes llamarla varias veces a medida que obtienes más datos; envía siempre todos los
     que tengas hasta el momento (los que aún no conozcas déjalos vacíos).
+
+    Args:
+        edad: edad del alumno tal como la dijo el usuario (ej: '9 años'); vacío si no se sabe.
+        interes_evento: true si el usuario mostró interés en el evento del bloque EVENTO_VIGENTE.
     """
     ctx.context.servicio.guardar_prospecto(ctx.context.wa_id, nombre=nombre, disciplina=disciplina,
-                                           turno=turno, dia=dia)
+                                           turno=turno, dia=dia, edad=edad, interes_evento=interes_evento)
     return "Datos del prospecto guardados."
 
 
@@ -96,7 +102,7 @@ class AgenteKudo:
 # ---------------------------------------------
 def construir_bloque_evento(hoy: str) -> str:
     """Bloque EVENTO_VIGENTE (info + instrucciones), solo mientras hoy <= EVENTO_PROMO_HASTA."""
-    if not EVENTO_PROMO_HASTA or hoy > EVENTO_PROMO_HASTA:
+    if not evento_vigente(hoy):
         return ""
     return "EVENTO_VIGENTE — " + EVENTO_INFO + EVENTO_INSTRUCCIONES
 
@@ -130,6 +136,10 @@ def build_agent_input(user_phone: str, user_msg: str, history: list[dict[str, st
             partes.append(f"Turno preferido: {perfil['turno']}")
         if perfil.get("dia"):
             partes.append(f"Día disponible: {perfil['dia']}")
+        if perfil.get("edad"):
+            partes.append(f"Edad del alumno: {perfil['edad']}")
+        if perfil.get("evento") == EVENTO_ID:
+            partes.append(f"Interesado en: {EVENTO_NOMBRE}")
         if partes:
             perfil_texto = "PERFIL_DEL_PROSPECTO:\n" + "\n".join(partes) + "\n\n"
 

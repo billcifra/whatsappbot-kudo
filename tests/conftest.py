@@ -24,6 +24,7 @@ class WhatsAppFalso:
     def __init__(self):
         self.enviados: list[tuple[str, str]] = []
         self.menus: list[str] = []
+        self.filas_menu: list[list[dict] | None] = []
         self.leidos: list[str] = []
         self.media: tuple[bytes | None, str] = (b"audio-falso", "audio/ogg")
         self.falla = False
@@ -34,8 +35,9 @@ class WhatsAppFalso:
         self.enviados.append((para, texto))
         return True
 
-    async def enviar_menu(self, para, cuerpo=""):
+    async def enviar_menu(self, para, cuerpo="", filas=None):
         self.menus.append(para)
+        self.filas_menu.append(filas)
         return True
 
     async def marcar_leido_y_escribiendo(self, msg_id):
